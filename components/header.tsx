@@ -25,14 +25,14 @@ export function Header() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-9 text-xs">
             <p className="hidden sm:block">
-              {language === "fr" 
+              {language === "fr"
                 ? "Livraison rapide dans toutes les wilayas via Yalidine"
                 : "توصيل سريع لجميع الولايات عبر ياليدين"
               }
             </p>
             <div className="flex items-center gap-4 ms-auto">
               <span className="hidden sm:inline">
-                {language === "fr" ? "Service client:" : "خدمة العملاء:"} 
+                {language === "fr" ? "Service client:" : "خدمة العملاء:"}
                 <span dir="ltr" className="ms-1 font-medium">+213 555 123 456</span>
               </span>
               <LanguageSwitcher />
@@ -76,17 +76,17 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="md:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setIsSearchOpen(!isSearchOpen)}
             >
               <Search className="h-5 w-5" />
               <span className="sr-only">{t("searchPlaceholder")}</span>
             </Button>
-            
-            {user && (
+
+            {user?.role === "admin" && (
               <Link href="/admin">
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <Settings className="h-5 w-5" />
@@ -94,14 +94,14 @@ export function Header() {
                 </Button>
               </Link>
             )}
-            
+
             <Link href="/account">
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                 <User className="h-5 w-5" />
                 <span className="sr-only">{t("myAccount")}</span>
               </Button>
             </Link>
-            
+
             <Link href="/cart">
               <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
                 <ShoppingCart className="h-5 w-5" />
@@ -113,11 +113,11 @@ export function Header() {
                 <span className="sr-only">{t("cart")}</span>
               </Button>
             </Link>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="lg:hidden text-muted-foreground hover:text-foreground" 
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden text-muted-foreground hover:text-foreground"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -146,36 +146,36 @@ export function Header() {
           <nav className="lg:hidden pb-4 border-t border-border pt-4">
             <ul className="space-y-1">
               <li>
-                <Link 
-                  href="/" 
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm font-medium text-foreground hover:bg-secondary transition-colors" 
+                <Link
+                  href="/"
+                  className="flex items-center px-3 py-2.5 rounded-md text-sm font-medium text-foreground hover:bg-secondary transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {t("home")}
                 </Link>
               </li>
               <li>
-                <Link 
-                  href="/category/carrosserie" 
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" 
+                <Link
+                  href="/category/carrosserie"
+                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {t("carrosserie")}
                 </Link>
               </li>
               <li>
-                <Link 
-                  href="/category/optique" 
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" 
+                <Link
+                  href="/category/optique"
+                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {t("optique")}
                 </Link>
               </li>
               <li>
-                <Link 
-                  href="/account" 
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" 
+                <Link
+                  href="/account"
+                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {t("myAccount")}
