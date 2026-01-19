@@ -57,14 +57,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (result?.ok) {
+        // Wait for session to be established
+        await new Promise(resolve => setTimeout(resolve, 500))
+
         // Fetch session to get role
         const sessionRes = await fetch("/api/auth/session")
         const sessionData = await sessionRes.json()
 
+
+        console.log("Session after login:", sessionData)
+
+        if (!sessionData?.user) {
+          console.error("Session not established, redirecting to account")
+          window.location.href = "/account"
+          return true
+        }
+
         // Redirect based on role
-        if (sessionData?.user?.role === "ADMIN") {
+        if (sessionData.user.role === "ADMIN") {
+          console.log("Redirecting admin to /admin")
           window.location.href = "/admin"
         } else {
+          console.log("Redirecting user to /account")
           window.location.href = "/account"
         }
 
