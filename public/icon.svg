@@ -1,0 +1,20 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @media (prefers-color-scheme: light) {
+      .background { fill: #2d3436; }
+      .primary { stroke: #ffffff; }
+      .secondary { stroke: #b2bec3; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .background { fill: #ffffff; }
+      .primary { stroke: #2d3436; }
+      .secondary { stroke: #636e72; }
+    }
+  </style>
+  <rect class="background" width="180" height="180" rx="37" />
+  <g transform="translate(20, 25) scale(1.4)">
+    <path class="primary" d="M15 70V35L32 55L50 28L68 55L85 35V48" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path class="secondary" d="M76 40L85 48L94 40" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path class="secondary" d="M85 48V65" stroke-width="5" stroke-linecap="round" fill="none"/>
+  </g>
+</svg>
