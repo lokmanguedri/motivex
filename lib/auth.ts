@@ -113,6 +113,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session: {
         strategy: "jwt",
     },
+    debug: process.env.NODE_ENV === "development",
+    basePath: "/api/auth",
     trustHost: true,
     useSecureCookies: process.env.NODE_ENV === "production",
     cookies: {
