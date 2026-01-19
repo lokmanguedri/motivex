@@ -1,23 +1,20 @@
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
-    const nextauthUrl = process.env.NEXTAUTH_URL || "not-set"
-    const hasSecret = !!process.env.NEXTAUTH_SECRET
     const isProd = process.env.NODE_ENV === "production"
-
-    // Check if session exists (without exposing sensitive data)
-    const sessionCookie = request.cookies.get(
-        isProd ? "__Secure-next-auth.session-token" : "next-auth.session-token"
-    )
 
     return NextResponse.json({
         ok: true,
-        nextauth_url: nextauthUrl,
-        has_secret: hasSecret,
         is_prod: isProd,
-        session_cookie_present: !!sessionCookie,
-        cookie_name: isProd ? "__Secure-next-auth.session-token" : "next-auth.session-token"
+        nextauth_url: process.env.NEXTAUTH_URL || "not-set",
+        site_url: process.env.NEXT_PUBLIC_SITE_URL || "not-set",
+        has_secret: !!process.env.NEXTAUTH_SECRET,
+        has_database_url: !!process.env.DATABASE_URL,
+        has_direct_url: !!process.env.DIRECT_URL,
+        has_admin_email: !!process.env.ADMIN_EMAIL,
+        has_admin_password: !!process.env.ADMIN_PASSWORD
     })
 }
