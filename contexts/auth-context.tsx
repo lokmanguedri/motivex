@@ -56,7 +56,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         redirect: false,
       })
 
-      return result?.ok || false
+      if (result?.ok) {
+        // Fetch session to get role
+        const sessionRes = await fetch("/api/auth/session")
+        const sessionData = await sessionRes.json()
+
+        // Redirect based on role
+        if (sessionData?.user?.role === "ADMIN") {
+          window.location.href = "/admin"
+        } else {
+          window.location.href = "/account"
+        }
+
+        return true
+      }
+
+      return false
     } catch (error) {
       console.error("Login error:", error)
       return false
@@ -69,10 +84,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     phone: string
   ): Promise<boolean> => {
-    // Registration endpoint will be added in Phase 3.2
-    // For now, return false
-    console.log("Registration not yet implemented:", { email, name, phone })
-    return false
+    try {
+      const nameParts = name.trim().split(" ")
+      const firstName = nameParts[0] || name
+      const lastName = nameParts.slice(1).join(" ") || firstName
+
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, firstName, lastName, phone }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Registration failed")
+      }
+
+      // Auto-login after successful registration
+      return await login(email, password)
+    } catch (error) {
+      console.error("Register error:", error)
+      throw error
+    }
   }
 
   const logout = () => {

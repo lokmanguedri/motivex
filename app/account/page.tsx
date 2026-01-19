@@ -45,11 +45,14 @@ export default function AccountPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    const success = await register(registerEmail, registerPassword, registerName, registerPhone)
-    if (success) {
-      toast.success(language === "fr" ? "Compte créé avec succès" : "تم إنشاء الحساب بنجاح")
-    } else {
-      toast.error(language === "fr" ? "Erreur lors de la création du compte" : "خطأ في إنشاء الحساب")
+    try {
+      const success = await register(registerEmail, registerPassword, registerName, registerPhone)
+      if (success) {
+        toast.success(language === "fr" ? "Compte créé avec succès" : "تم إنشاء الحساب بنجاح")
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : (language === "fr" ? "Erreur lors de la création du compte" : "خطأ في إنشاء الحساب")
+      toast.error(message)
     }
 
     setIsSubmitting(false)

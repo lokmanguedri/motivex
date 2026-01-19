@@ -54,6 +54,28 @@ export function validateAlgerianPhone(phone: string): PhoneValidationResult {
 }
 
 /**
+ * Normalize Algerian phone to +213XXXXXXXXX format
+ * @param phone - Phone number in any accepted format
+ * @returns Normalized phone in +213XXXXXXXXX format
+ */
+export function normalizeAlgerianPhone(phone: string): string {
+    const cleaned = phone.replace(/[\s\-\(\)\.]/g, '')
+
+    // Already international format
+    if (cleaned.startsWith('+213')) {
+        return cleaned
+    }
+
+    // Local format: 0XXXXXXXXX → +213XXXXXXXXX
+    if (cleaned.startsWith('0')) {
+        return '+213' + cleaned.substring(1)
+    }
+
+    return cleaned
+}
+
+
+/**
  * Validates stock availability for order items
  */
 export interface StockValidationResult {
