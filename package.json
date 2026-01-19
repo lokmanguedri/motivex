@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "start": "next start",
     "seed": "tsx prisma/seed.ts",
-    "verify:prod": "node scripts/verify-production.mjs"
+    "verify:prod": "node scripts/verify-production.mjs",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
