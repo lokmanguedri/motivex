@@ -5,21 +5,33 @@ export default auth((req) => {
     const { pathname } = req.nextUrl
     const isLoggedIn = !!req.auth
 
-    // Protect /admin routes - require any authenticated user
-    // (ADMIN role check happens server-side in components/APIs)
+    // Protect /admin routes - require ADMIN role
     if (pathname.startsWith("/admin")) {
         if (!isLoggedIn) {
             return NextResponse.redirect(new URL("/account", req.url))
         }
+        // Check if user has ADMIN role
+        const userRole = req.auth?.user?.role
+        if (userRole !== "ADMIN") {
+            return NextResponse.redirect(new URL("/account", req.url))
+        }
     }
 
-    // Protect /api/admin/* routes - require any authenticated user
-    // (ADMIN role check happens inside route handlers)
+
+    // Protect /api/admin/* routes - require ADMIN role
     if (pathname.startsWith("/api/admin")) {
         if (!isLoggedIn) {
             return NextResponse.json(
                 { error: "Authentication required" },
                 { status: 401 }
+            )
+        }
+        // Check if user has ADMIN role
+        const userRole = req.auth?.user?.role
+        if (userRole !== "ADMIN") {
+            return NextResponse.json(
+                { error: "Admin access required" },
+                { status: 403 }
             )
         }
     }

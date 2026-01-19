@@ -45,8 +45,17 @@ export async function bootstrapAdminOnce(): Promise<void> {
             })
 
             if (existing) {
-                if (process.env.NODE_ENV === "development") {
-                    console.log("✅ Admin user already exists:", adminEmail)
+                // If user exists but role is not ADMIN, update it
+                if (existing.role !== "ADMIN") {
+                    await prisma.user.update({
+                        where: { email: adminEmail },
+                        data: { role: "ADMIN" }
+                    })
+                    console.log("✅ Admin user role updated to ADMIN:", adminEmail)
+                } else {
+                    if (process.env.NODE_ENV === "development") {
+                        console.log("✅ Admin user already exists:", adminEmail)
+                    }
                 }
                 globalForBootstrap.adminBootstrapCompleted = true
                 return
