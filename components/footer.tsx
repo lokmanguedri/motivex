@@ -21,15 +21,15 @@ export function Footer() {
                 {language === "fr" ? "Restez informé" : "ابق على اطلاع"}
               </h3>
               <p className="text-sm text-primary-foreground/70">
-                {language === "fr" 
+                {language === "fr"
                   ? "Recevez nos offres exclusives et nouveautés"
                   : "احصل على عروضنا الحصرية والمستجدات"
                 }
               </p>
             </div>
             <div className="flex w-full md:w-auto gap-2">
-              <Input 
-                type="email" 
+              <Input
+                type="email"
                 placeholder={language === "fr" ? "Votre email" : "بريدك الإلكتروني"}
                 className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 h-11 w-full md:w-64"
               />
@@ -51,7 +51,7 @@ export function Footer() {
               <MotivexLogo size="md" inverted />
             </div>
             <p className="text-sm text-primary-foreground/70 leading-relaxed">
-              {language === "fr" 
+              {language === "fr"
                 ? "Votre fournisseur de confiance pour les pièces de carrosserie et optique automobile en Algérie."
                 : "موردك الموثوق لقطع غيار الكاروسري والبصريات في الجزائر."
               }
@@ -114,23 +114,20 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2.5 text-primary-foreground/70">
                 <Phone className="w-4 h-4 shrink-0" />
-                <span dir="ltr">+213 555 123 456</span>
+                <span dir="ltr">+213 560 261 594</span>
               </li>
               <li className="flex items-center gap-2.5 text-primary-foreground/70">
                 <Mail className="w-4 h-4 shrink-0" />
-                <span>contact@motivex-dz.com</span>
+                <span>guedrilokmanabdelmouiz@gmail.com</span>
               </li>
               <li className="flex items-start gap-2.5 text-primary-foreground/70">
                 <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{language === "fr" ? "Alger, Algérie" : "الجزائر العاصمة"}</span>
+                <span>{language === "fr" ? "Ain Mlila, Oum El Bouaghi" : "عين مليلة، أم البواقي"}</span>
               </li>
             </ul>
             <div className="flex gap-3 mt-4">
-              <a href="#" className="w-9 h-9 rounded-lg bg-primary-foreground/10 flex items-center justify-center text-primary-foreground/70 hover:bg-primary-foreground/20 hover:text-primary-foreground transition-colors">
+              <a href="https://www.facebook.com/eurllkautoparts" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-primary-foreground/10 flex items-center justify-center text-primary-foreground/70 hover:bg-primary-foreground/20 hover:text-primary-foreground transition-colors">
                 <Facebook className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-9 h-9 rounded-lg bg-primary-foreground/10 flex items-center justify-center text-primary-foreground/70 hover:bg-primary-foreground/20 hover:text-primary-foreground transition-colors">
-                <Instagram className="w-4 h-4" />
               </a>
             </div>
           </div>
