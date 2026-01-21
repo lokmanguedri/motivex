@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url)
 
         // Parse query parameters
-        const category = searchParams.get("category")
+        const category = searchParams.get("category") // Can be ID or slug
         const brand = searchParams.get("brand")
         const model = searchParams.get("model")
         const year = searchParams.get("year")
@@ -21,8 +21,22 @@ export async function GET(request: NextRequest) {
             isActive: true,
         }
 
+        // Support both categoryId and categorySlug via 'category' param
         if (category) {
-            where.categoryId = category
+            // Check if it's a CUID (starts with 'c') or a slug
+            if (category.startsWith('c') && category.length > 20) {
+                // Likely a categoryId
+                where.categoryId = category
+            } else {
+                // Treat as slug
+                const categoryRecord = await prisma.category.findUnique({
+                    where: { slug: category },
+                    select: { id: true }
+                })
+                if (categoryRecord) {
+                    where.categoryId = categoryRecord.id
+                }
+            }
         }
 
         if (brand) {
