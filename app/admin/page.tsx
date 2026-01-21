@@ -164,7 +164,8 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([])
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null)
   const [stats, setStats] = useState({
-    productsCount: 0,
+    productsCountActive: 0,
+    productsCountTotal: 0,
     ordersCount: 0,
     pendingOrders: 0,
     revenue: 0
@@ -492,9 +493,9 @@ export default function AdminDashboard() {
                     {t("products")}
                   </span>
                 </div>
-                <p className="text-xl lg:text-2xl font-bold text-foreground">{stats.productsCount}</p>
+                <p className="text-xl lg:text-2xl font-bold text-foreground">{stats.productsCountActive}</p>
                 <p className="text-[10px] lg:text-xs text-muted-foreground mt-1">
-                  {language === "fr" ? "Total en stock" : "إجمالي المخزون"}
+                  {language === "fr" ? `Actifs (${stats.productsCountTotal} total)` : `نشط (${stats.productsCountTotal} إجمالي)`}
                 </p>
               </CardContent>
             </Card>
