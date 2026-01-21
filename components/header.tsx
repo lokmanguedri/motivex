@@ -86,7 +86,7 @@ export function Header() {
               <span className="sr-only">{t("searchPlaceholder")}</span>
             </Button>
 
-            {user?.role === "admin" && (
+            {user?.role?.toUpperCase() === "ADMIN" && (
               <Link href="/admin">
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <Settings className="h-5 w-5" />
