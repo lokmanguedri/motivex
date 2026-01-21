@@ -59,7 +59,7 @@ export function HeroBanner() {
           <div className="relative hidden lg:block">
             <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-muted shadow-2xl">
               <img
-                src="/abstract-automotive-pattern-geometric.jpg"
+                src="/car-parts-warehouse.jpg"
                 alt=""
                 className="w-full h-full object-cover"
               />
@@ -122,3 +122,4 @@ export function HeroBanner() {
     </section>
   )
 }
+
