@@ -9,8 +9,13 @@ export async function GET() {
     }
 
     try {
-        // Get total products count
-        const productsCount = await prisma.product.count()
+        // Get active products count (isActive = true)
+        const productsCountActive = await prisma.product.count({
+            where: { isActive: true }
+        })
+
+        // Get total products count (all products)
+        const productsCountTotal = await prisma.product.count()
 
         // Get total orders count
         const ordersCount = await prisma.order.count()
@@ -38,7 +43,8 @@ export async function GET() {
         const revenue = Number(revenueData._sum.total || 0)
 
         return NextResponse.json({
-            productsCount,
+            productsCountActive,
+            productsCountTotal,
             ordersCount,
             pendingOrders,
             revenue

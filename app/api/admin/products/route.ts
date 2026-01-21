@@ -10,8 +10,20 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // Admin can see ALL products including inactive
+        // Get filter from query params
+        const { searchParams } = new URL(request.url)
+        const filter = searchParams.get('filter') || 'all'
+
+        // Build where clause based on filter
+        const where = filter === 'active'
+            ? { isActive: true }
+            : filter === 'inactive'
+                ? { isActive: false }
+                : {} // 'all' - no filter
+
+        // Admin can see filtered products
         const products = await prisma.product.findMany({
+            where,
             include: {
                 category: {
                     select: {

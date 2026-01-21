@@ -115,14 +115,31 @@ export async function DELETE(
             )
         }
 
-        // Soft delete (set isActive to false)
-        await prisma.product.update({
+        // Check for related order items (foreign key constraint)
+        const orderItemsCount = await prisma.orderItem.count({
+            where: { productId: id }
+        })
+
+        if (orderItemsCount > 0) {
+            // Product is used in orders, cannot hard delete
+            return NextResponse.json(
+                {
+                    error: "Impossible de supprimer: produit utilisé dans des commandes / لا يمكن الحذف: المنتج مرتبط بطلبات",
+                    code: "HAS_ORDERS",
+                    orderItemsCount,
+                    suggestion: "Utilisez la désactivation à la place / استخدم إلغاء التنشيط بدلاً من ذلك"
+                },
+                { status: 409 }
+            )
+        }
+
+        // Safe to hard delete - no foreign key constraints
+        await prisma.product.delete({
             where: { id },
-            data: { isActive: false },
         })
 
         return NextResponse.json({
-            message: "Product deleted successfully",
+            message: "Product permanently deleted / المنتج محذوف نهائياً",
         })
     } catch (error) {
         console.error("Error deleting product:", error)
