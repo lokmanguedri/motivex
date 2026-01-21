@@ -207,188 +207,19 @@ export default function AdminDashboard() {
         // Fetch products
         const res = await fetch('/api/admin/products', { cache: 'no-store' })
         if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            router.push('/account')
-            toast.error(language === 'fr' ? 'Authentification requise' : 'مطلوب المصادقة')
-            return
-          }
-          throw new Error('Failed to fetch')
-        }
-        const data = await res.json()
-        if (!isMounted) return
-
-        const mapped = mapApiProductsToUi(data.products)
-        setProducts(mapped)
-
-        // Fetch orders
-        const ordersRes = await fetch('/api/admin/orders', { cache: 'no-store' })
-        if (ordersRes.ok) {
-          const ordersData = await ordersRes.json()
-          if (isMounted) {
-            setOrders(ordersData.orders)
-          }
-        }
-
-        // Fetch stats
-        const statsRes = await fetch('/api/admin/stats', { cache: 'no-store' })
-        if (statsRes.ok) {
-          const statsData = await statsRes.json()
-          if (isMounted) {
-            setStats(statsData)
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        if (isMounted) {
-          toast.error(language === 'fr' ? 'Erreur de chargement' : 'خطأ في التحميل')
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    fetchData()
-    return () => { isMounted = false }
-  }, [router, language])
-
-  // Check admin access
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="max-w-md w-full mx-4 text-center border-border">
-          <CardContent className="py-10">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-              <Package className="w-7 h-7 text-primary" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
-              {language === "fr" ? "Accès restreint" : "وصول مقيد"}
-            </h2>
-            <p className="text-muted-foreground mb-6">{t("loginRequired")}</p>
-            <Link href="/account">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                {t("login")}
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (isLoading) {
-    return <Loading />
-  }
-
-  const handleLogout = () => {
-    logout()
-    router.push("/")
-  }
-
-  const resetProductForm = () => {
-    setProductForm({
-      nameFr: "", nameAr: "", descriptionFr: "", descriptionAr: "",
-      oldPrice: "", newPrice: "", category: categories[0]?.slug || "carrosserie",
-      brand: "", model: "", year: "", stock: "", sku: "",
-      imageUrl: "",
-    })
-  }
-
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product)
-    setProductForm({
-      nameFr: product.nameFr, nameAr: product.nameAr,
-      descriptionFr: product.descriptionFr, descriptionAr: product.descriptionAr,
-      oldPrice: String(product.oldPrice || ""), newPrice: String(product.newPrice),
-      category: product.category, brand: product.brand, model: product.model,
-      year: product.year, stock: String(product.stock), sku: product.sku,
-      imageUrl: product.image || "",
-    })
-  }
-
-  const handleSaveProduct = async () => {
-    try {
-      const categoryObj = categories.find(c => c.slug === productForm.category)
-      if (!categoryObj) {
-        toast.error(language === 'fr' ? 'Catégorie introuvable' : 'الفئة غير موجودة')
-        return
-      }
-
-      const payload = {
-        sku: productForm.sku,
-        nameFr: productForm.nameFr,
-        nameAr: productForm.nameAr,
-        descFr: productForm.descriptionFr || null,
-        descAr: productForm.descriptionAr || null,
-        price: Number(productForm.newPrice),
-        oldPrice: productForm.oldPrice ? Number(productForm.oldPrice) : null,
-        stock: Number(productForm.stock),
-        brand: productForm.brand || null,
-        model: productForm.model || null,
-        year: productForm.year ? parseInt(productForm.year) : null,
-        categoryId: categoryObj.id,
-        images: productForm.imageUrl ? [{
-          url: productForm.imageUrl,
-          isMain: true,
-          sortOrder: 0
-        }] : []
-      }
-
-      const url = editingProduct
-        ? `/api/admin/products/${editingProduct.id}`
-        : `/api/admin/products`
-      const method = editingProduct ? 'PATCH' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-
-      if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           router.push('/account')
-          toast.error(language === 'fr' ? 'Authentification requise' : 'مطلوب المصادقة')
+          toast.error(language === 'fr' ? 'Authentification requise' : '????? ????????')
           return
         }
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to save')
-      }
-
-      toast.success(language === 'fr'
-        ? (editingProduct ? 'Produit mis à jour' : 'Produit ajouté')
-        : (editingProduct ? 'تم تحديث المنتج' : 'تمت إضافة المنتج')
-      )
-
-      // Refresh products
-      const refreshRes = await fetch('/api/admin/products', { cache: 'no-store' })
-      if (refreshRes.ok) {
-        const data = await refreshRes.json()
-        setProducts(mapApiProductsToUi(data.products))
-      }
-
-      setEditingProduct(null)
-      setIsAddingProduct(false)
-      resetProductForm()
-    } catch (error: any) {
-      console.error('Error saving product:', error)
-      toast.error(error.message || (language === 'fr' ? 'Erreur lors de la sauvegarde' : 'خطأ في الحفظ'))
-    }
-  }
-
-  const handleDeleteProduct = async (id: string) => {
-    try {
-      const res = await fetch(`/api/admin/products/${id}`, {
-        method: 'DELETE'
-      })
-
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
-          router.push('/account')
-          toast.error(language === 'fr' ? 'Authentification requise' : 'مطلوب المصادقة')
+        
+        if (res.status === 409) {
+          const error = await res.json()
+          toast.error(error.error, { duration: 5000 })
+          toast.info(error.suggestion || (language === 'fr' ? "D�sactivez ce produit au lieu de le supprimer" : "?? ?????? ????? ??? ?????? ???? ?? ????"), { duration: 5000 })
           return
         }
+        
         throw new Error('Failed to delete')
       }
 
