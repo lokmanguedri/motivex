@@ -85,7 +85,6 @@ export default function ProductsPage() {
                             {products.map((product) => (
                                 <ProductCard
                                     key={product.id}
-                                    id={product.id}
                                     title={language === "fr" ? product.nameFr : product.nameAr}
                                     price={product.price}
                                     image={product.mainImage?.url || "/placeholder.svg"}
