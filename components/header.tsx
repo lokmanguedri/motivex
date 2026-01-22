@@ -14,9 +14,17 @@ import { MotivexLogo } from "./motivex-logo"
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const { t, language } = useLanguage()
   const { itemCount } = useCart()
   const { user } = useAuth()
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      window.location.href = `/products?search=${encodeURIComponent(searchQuery.trim())}`
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
@@ -64,14 +72,16 @@ export function Header() {
 
           {/* Search Bar - Desktop */}
           <div className="hidden md:flex flex-1 max-w-md mx-4">
-            <div className="relative w-full">
+            <form onSubmit={handleSearch} className="relative w-full">
               <Search className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
               <Input
                 type="search"
                 placeholder={t("searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className={`${language === "ar" ? "pr-10 pl-4" : "pl-10 pr-4"} h-10 bg-secondary/50 border-transparent focus:border-border focus:bg-card transition-colors`}
               />
-            </div>
+            </form>
           </div>
 
           {/* Actions */}
@@ -129,15 +139,17 @@ export function Header() {
         {/* Mobile Search */}
         {isSearchOpen && (
           <div className="md:hidden pb-4">
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <Search className={`absolute ${language === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
               <Input
                 type="search"
                 placeholder={t("searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className={`${language === "ar" ? "pr-10 pl-4" : "pl-10 pr-4"} h-10 bg-secondary/50 border-transparent focus:border-border`}
                 autoFocus
               />
-            </div>
+            </form>
           </div>
         )}
 
