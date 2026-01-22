@@ -34,8 +34,8 @@ export function Header() {
           <div className="flex items-center justify-between h-9 text-xs">
             <p className="hidden sm:block">
               {language === "fr"
-                ? "Livraison rapide dans toutes les wilayas via Yalidine"
-                : "توصيل سريع لجميع الولايات عبر ياليدين"
+                ? "Livraison rapide dans toutes les wilayas via Yalidine & Guepex"
+                : "توصيل سريع لجميع الولايات عبر ياليدين وجيباكس"
               }
             </p>
             <div className="flex items-center gap-4 ms-auto">
