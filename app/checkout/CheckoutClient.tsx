@@ -315,8 +315,7 @@ export default function CheckoutClient() {
                                         <RadioGroup
                                             value={formData.shippingMethod}
                                             onValueChange={(value) => handleChange("shippingMethod", value)}
-                                            className="space-y-3"
-                                        >
+                                            className="space-y-3">
                                             <label
                                                 htmlFor="YALIDINE"
                                                 className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${formData.shippingMethod === "YALIDINE"
@@ -330,9 +329,6 @@ export default function CheckoutClient() {
                                                 </div>
                                                 <div className="flex-1">
                                                     <p className="font-medium text-foreground">Yalidine</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {language === "fr" ? "Livraison standard 48-72h" : "توصيل قياسي 48-72 ساعة"}
-                                                    </p>
                                                 </div>
                                             </label>
                                             <label
@@ -348,9 +344,6 @@ export default function CheckoutClient() {
                                                 </div>
                                                 <div className="flex-1">
                                                     <p className="font-medium text-foreground">Guepex</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {language === "fr" ? "Livraison express 24-48h" : "توصيل سريع 24-48 ساعة"}
-                                                    </p>
                                                 </div>
                                             </label>
                                         </RadioGroup>
