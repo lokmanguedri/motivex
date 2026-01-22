@@ -32,6 +32,7 @@ export default function CheckoutClient() {
         address: "",
         wilaya: "",
         commune: "",
+        shippingMethod: "YALIDINE",
         paymentMethod: "COD",
         baridiMobReference: "",
     })
@@ -301,6 +302,58 @@ export default function CheckoutClient() {
                                                 />
                                             </div>
                                         </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-border">
+                                    <CardHeader className="pb-4">
+                                        <CardTitle className="text-lg">
+                                            {language === "fr" ? "Méthode de livraison" : "طريقة التوصيل"}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        <RadioGroup
+                                            value={formData.shippingMethod}
+                                            onValueChange={(value) => handleChange("shippingMethod", value)}
+                                            className="space-y-3"
+                                        >
+                                            <label
+                                                htmlFor="YALIDINE"
+                                                className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${formData.shippingMethod === "YALIDINE"
+                                                    ? "border-primary bg-primary/5"
+                                                    : "border-border hover:bg-secondary/50"
+                                                    }`}
+                                            >
+                                                <RadioGroupItem value="YALIDINE" id="YALIDINE" />
+                                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                                                    <Truck className="w-5 h-5 text-primary" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-foreground">Yalidine</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {language === "fr" ? "Livraison standard 48-72h" : "توصيل قياسي 48-72 ساعة"}
+                                                    </p>
+                                                </div>
+                                            </label>
+                                            <label
+                                                htmlFor="GUEPEX"
+                                                className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${formData.shippingMethod === "GUEPEX"
+                                                    ? "border-primary bg-primary/5"
+                                                    : "border-border hover:bg-secondary/50"
+                                                    }`}
+                                            >
+                                                <RadioGroupItem value="GUEPEX" id="GUEPEX" />
+                                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                                                    <Truck className="w-5 h-5 text-primary" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-foreground">Guepex</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {language === "fr" ? "Livraison express 24-48h" : "توصيل سريع 24-48 ساعة"}
+                                                    </p>
+                                                </div>
+                                            </label>
+                                        </RadioGroup>
                                     </CardContent>
                                 </Card>
 

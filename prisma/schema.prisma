@@ -7,9 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL") // Pooler connection (port 6543) for runtime
-  }
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Pooler connection (port 6543) for runtime
+}
 
 // ============================================
 // ENUMS
@@ -36,6 +36,11 @@ enum PaymentMethod {
 enum PaymentStatus {
   PENDING
   PAID
+}
+
+enum ShippingMethod {
+  YALIDINE
+  GUEPEX
 }
 
 // ============================================
@@ -131,12 +136,13 @@ model Order {
   total         Decimal     @db.Decimal(12, 2)
 
   // Structured shipping information
-  shippingFullName String  @map("shipping_full_name")
-  shippingPhone    String  @map("shipping_phone")
-  shippingAddress1 String  @map("shipping_address1")
-  shippingWilaya   String  @map("shipping_wilaya")
-  shippingCommune  String  @map("shipping_commune")
-  shippingNotes    String? @map("shipping_notes") @db.Text
+  shippingFullName String         @map("shipping_full_name")
+  shippingPhone    String         @map("shipping_phone")
+  shippingAddress1 String         @map("shipping_address1")
+  shippingWilaya   String         @map("shipping_wilaya")
+  shippingCommune  String         @map("shipping_commune")
+  shippingNotes    String?        @map("shipping_notes") @db.Text
+  shippingMethod   ShippingMethod @default(YALIDINE) @map("shipping_method")
 
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id])
@@ -185,7 +191,7 @@ model Payment {
   method          PaymentMethod
   status          PaymentStatus @default(PENDING)
   amount          Decimal       @db.Decimal(12, 2)
-  reference       String?       // BaridiMob transaction reference
+  reference       String? // BaridiMob transaction reference
   receiptImageUrl String?       @map("receipt_image_url")
 
   orderId String @unique @map("order_id")

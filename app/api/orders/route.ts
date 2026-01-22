@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const {
             items,
+            shippingMethod,
             paymentMethod,
             baridiMobReference,
             shippingFullName,
@@ -79,6 +80,13 @@ export async function POST(request: NextRequest) {
         if (!paymentMethod || !["COD", "BARIDIMOB"].includes(paymentMethod)) {
             return NextResponse.json(
                 { error: "Invalid payment method" },
+                { status: 400 }
+            )
+        }
+
+        if (shippingMethod && !["YALIDINE", "GUEPEX"].includes(shippingMethod)) {
+            return NextResponse.json(
+                { error: "Invalid shipping method" },
                 { status: 400 }
             )
         }
@@ -232,6 +240,7 @@ export async function POST(request: NextRequest) {
                     shippingCommune,
                     shippingAddress1,
                     shippingNotes: shippingNotes || null,
+                    shippingMethod: shippingMethod || "YALIDINE",
                     userId: session.user.id,
                     items: {
                         create: orderItemsData
