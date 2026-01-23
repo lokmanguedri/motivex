@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Search } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 import type { Product } from "@/lib/types"
+import { mapApiProductsToUi } from "@/lib/product-mapper"
 
 function ProductsContent() {
     const searchParams = useSearchParams()
@@ -30,7 +31,9 @@ function ProductsContent() {
             const res = await fetch("/api/products")
             if (res.ok) {
                 const data = await res.json()
-                setProducts(data.products || [])
+                // Use mapper to transform API data (price -> newPrice)
+                const mappedProducts = mapApiProductsToUi(data.products || [])
+                setProducts(mappedProducts)
             }
         } catch (error) {
             console.error("Error fetching products:", error)
