@@ -19,6 +19,8 @@ interface ApiProduct {
     brand: string | null
     model: string | null
     year: number | null
+    fitmentYearsFrom: number | null
+    fitmentYearsTo: number | null
     isActive: boolean
     categoryId: string
     category: {
@@ -59,6 +61,8 @@ export function mapApiProductToUi(apiProduct: ApiProduct): Product {
         brand: apiProduct.brand || "",
         model: apiProduct.model || "",
         year: apiProduct.year?.toString() || "",
+        fitmentYearsFrom: apiProduct.fitmentYearsFrom?.toString() || undefined,
+        fitmentYearsTo: apiProduct.fitmentYearsTo?.toString() || undefined,
         stock: apiProduct.stock,
         sku: apiProduct.sku,
     }

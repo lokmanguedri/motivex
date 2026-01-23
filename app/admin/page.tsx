@@ -44,6 +44,8 @@ interface ProductFormProps {
     brand: string
     model: string
     year: string
+    fitmentYearsFrom: string
+    fitmentYearsTo: string
     stock: string
     sku: string
     imageUrl: string
@@ -59,6 +61,8 @@ interface ProductFormProps {
     brand: string
     model: string
     year: string
+    fitmentYearsFrom: string
+    fitmentYearsTo: string
     stock: string
     sku: string
     imageUrl: string
@@ -146,8 +150,25 @@ function ProductFormFields({ productForm, setProductForm, categories, language, 
           <Input className="h-10 bg-card border-border" value={productForm.model} onChange={e => setProductForm(p => ({ ...p, model: e.target.value }))} />
         </div>
         <div className="space-y-2">
-          <Label className="text-sm font-medium">{language === "fr" ? "Année" : "السنة"}</Label>
-          <Input className="h-10 bg-card border-border" value={productForm.year} onChange={e => setProductForm(p => ({ ...p, year: e.target.value }))} />
+          <Label className="text-sm font-medium">{language === "fr" ? "Année (compatible)" : "السنة (متوافق)"}</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Input
+                className="h-10 bg-card border-border"
+                placeholder={language === "fr" ? "De" : "من"}
+                value={productForm.fitmentYearsFrom}
+                onChange={e => setProductForm(p => ({ ...p, fitmentYearsFrom: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Input
+                className="h-10 bg-card border-border"
+                placeholder={language === "fr" ? "À" : "إلى"}
+                value={productForm.fitmentYearsTo}
+                onChange={e => setProductForm(p => ({ ...p, fitmentYearsTo: e.target.value }))}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -180,7 +201,8 @@ export default function AdminDashboard() {
   const [productForm, setProductForm] = useState({
     nameFr: "", nameAr: "", descriptionFr: "", descriptionAr: "",
     oldPrice: "", newPrice: "", category: "carrosserie",
-    brand: "", model: "", year: "", stock: "", sku: "",
+    brand: "", model: "", year: "", fitmentYearsFrom: "", fitmentYearsTo: "",
+    stock: "", sku: "",
     imageUrl: "",
   })
 
@@ -289,7 +311,8 @@ export default function AdminDashboard() {
     setProductForm({
       nameFr: "", nameAr: "", descriptionFr: "", descriptionAr: "",
       oldPrice: "", newPrice: "", category: categories[0]?.slug || "carrosserie",
-      brand: "", model: "", year: "", stock: "", sku: "",
+      brand: "", model: "", year: "", fitmentYearsFrom: "", fitmentYearsTo: "",
+      stock: "", sku: "",
       imageUrl: "",
     })
   }
@@ -301,7 +324,8 @@ export default function AdminDashboard() {
       descriptionFr: product.descriptionFr, descriptionAr: product.descriptionAr,
       oldPrice: String(product.oldPrice || ""), newPrice: String(product.newPrice),
       category: product.category, brand: product.brand, model: product.model,
-      year: product.year, stock: String(product.stock), sku: product.sku,
+      year: product.year, fitmentYearsFrom: product.fitmentYearsFrom || "", fitmentYearsTo: product.fitmentYearsTo || "",
+      stock: String(product.stock), sku: product.sku,
       imageUrl: product.image || "",
     })
   }
@@ -326,6 +350,8 @@ export default function AdminDashboard() {
         brand: productForm.brand || null,
         model: productForm.model || null,
         year: productForm.year ? parseInt(productForm.year) : null,
+        fitmentYearsFrom: productForm.fitmentYearsFrom ? parseInt(productForm.fitmentYearsFrom) : null,
+        fitmentYearsTo: productForm.fitmentYearsTo ? parseInt(productForm.fitmentYearsTo) : null,
         categoryId: categoryObj.id,
         images: productForm.imageUrl ? [{
           url: productForm.imageUrl,

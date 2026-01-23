@@ -132,6 +132,8 @@ export async function POST(request: NextRequest) {
                 brand,
                 model,
                 year: year ? parseInt(year) : null,
+                fitmentYearsFrom: body.fitmentYearsFrom || null,
+                fitmentYearsTo: body.fitmentYearsTo || null,
                 categoryId,
                 images: images?.length
                     ? {

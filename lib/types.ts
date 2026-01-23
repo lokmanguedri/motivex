@@ -14,6 +14,8 @@ export interface Product {
   brand: string
   model: string
   year: string
+  fitmentYearsFrom?: string
+  fitmentYearsTo?: string
   stock: number
   sku: string
 }

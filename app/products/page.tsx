@@ -51,7 +51,7 @@ function ProductsContent() {
             const nameAr = product.nameAr?.toLowerCase() || ""
             const brand = product.brand?.toLowerCase() || ""
             const model = product.model?.toLowerCase() || ""
-            const year = product.year?.toLowerCase() || ""
+            const year = product.year?.toString() || ""
 
             return (
                 nameFr.includes(query) ||
