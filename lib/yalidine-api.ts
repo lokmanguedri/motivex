@@ -78,29 +78,34 @@ export async function getCommunesByWilaya(wilayaId: string): Promise<Commune[]> 
  */
 export async function createShipment(shipmentData: ShipmentData): Promise<ShipmentResponse> {
     try {
+        // Yalidine API expects an array of parcels
+        const parcels = [{
+            order_id: shipmentData.orderNumber,
+            from_wilaya_name: "Alger", // Your warehouse location - update as needed
+            firstname: shipmentData.fullName.split(' ')[0],
+            familyname: shipmentData.fullName.split(' ').slice(1).join(' ') || shipmentData.fullName,
+            contact_phone: shipmentData.phone,
+            address: shipmentData.address,
+            to_commune_name: shipmentData.commune, // Commune name (not ID)
+            to_wilaya_name: shipmentData.wilaya, // Wilaya name (not ID)
+            product_list: shipmentData.items.map(item => `${item.name} x${item.quantity}`).join(', '),
+            price: shipmentData.totalAmount,
+            do_not_call: false,
+            is_stopdesk: false,
+            stopdesk_id: null,
+            has_exchange: false,
+            freeshipping: false,
+            product_to_collect: null,
+        }]
+
         const response = await fetch(`${API_BASE}/parcels`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${API_KEY}`,
+                'X-API-ID': process.env.YALIDINE_API_ID || API_KEY,
+                'X-API-TOKEN': API_KEY,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                order_id: shipmentData.orderNumber,
-                from_wilaya_id: 16, // Default sender wilaya (Algiers), update as needed
-                firstname: shipmentData.fullName.split(' ')[0],
-                familyname: shipmentData.fullName.split(' ').slice(1).join(' ') || shipmentData.fullName,
-                contact_phone: shipmentData.phone,
-                address: shipmentData.address,
-                to_wilaya_id: parseInt(shipmentData.wilaya) || shipmentData.wilaya,
-                to_commune_id: parseInt(shipmentData.commune) || shipmentData.commune,
-                product_list: shipmentData.items.map(item => item.name).join(', '),
-                price: shipmentData.totalAmount,
-                do_not_call: false,
-                is_stopdesk: false,
-                has_exchange: false,
-                freeshipping: false,
-                note: shipmentData.notes || '',
-            }),
+            body: JSON.stringify(parcels),
         })
 
         if (!response.ok) {
@@ -110,10 +115,11 @@ export async function createShipment(shipmentData: ShipmentData): Promise<Shipme
 
         const data = await response.json()
 
+        // Yalidine returns the tracking number in the response
         return {
-            trackingId: data.tracking || data.tracking_id || data.id,
-            status: data.status || 'PENDING',
-            estimatedDelivery: data.estimated_delivery,
+            trackingId: data[0]?.tracking || data[0]?.tracking_id || data[0]?.id,
+            status: 'PENDING',
+            estimatedDelivery: undefined,
         }
     } catch (error) {
         console.error('Error creating shipment:', error)
