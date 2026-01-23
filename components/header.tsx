@@ -2,59 +2,56 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ShoppingCart, Search, Menu, X, User, Settings } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
+import { ShoppingCart, Search, Menu, X, User, LogOut, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useLanguage } from "@/contexts/language-context"
 import { useCart } from "@/contexts/cart-context"
-import { LanguageSwitcher } from "./language-selector"
-import { MotivexLogo } from "./motivex-logo"
+import { useAuth } from "@/contexts/auth-context"
+import { MotivexLogo } from "@/components/motivex-logo"
 
 export function Header() {
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const { t, language } = useLanguage()
   const { itemCount } = useCart()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      window.location.href = `/products?search=${encodeURIComponent(searchQuery.trim())}`
+      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`)
+      setIsSearchOpen(false)
     }
+  }
+
+  const handleLogout = () => {
+    logout()
+    router.push("/")
   }
 
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
       {/* Top Bar */}
-      <div className="border-b border-border bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-9 text-xs">
-            <p className="hidden sm:block">
-              {language === "fr"
-                ? "Livraison rapide dans toutes les wilayas via Yalidine & Guepex"
-                : "توصيل سريع لجميع الولايات عبر ياليدين وجيباكس"
-              }
-            </p>
-            <div className="flex items-center gap-4 ms-auto">
-              <span className="hidden sm:inline">
-                {language === "fr" ? "Service client:" : "خدمة العملاء:"}
-                <span dir="ltr" className="ms-1 font-medium">+213 555 123 456</span>
-              </span>
-              <LanguageSwitcher />
-            </div>
-          </div>
+      <div className="bg-primary text-primary-foreground">
+        <div className="container mx-auto px-4 py-2">
+          <p className="text-xs sm:text-sm text-center font-medium">
+            {language === "fr"
+              ? "Livraison rapide dans toutes les wilayas via Yalidine & Guepex"
+              : "توصيل سريع في جميع الولايات عبر ياليدين و جيبكس"}
+          </p>
         </div>
       </div>
 
       {/* Main Header */}
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center shrink-0">
-            <MotivexLogo size="md" />
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <MotivexLogo className="h-8 w-auto" />
           </Link>
 
           {/* Desktop Navigation */}
@@ -79,51 +76,58 @@ export function Header() {
                 placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`${language === "ar" ? "pr-10 pl-4" : "pl-10 pr-4"} h-10 bg-secondary/50 border-transparent focus:border-border focus:bg-card transition-colors`}
+                className={`${language === "ar" ? "pr-10 pl-4" : "pl-10 pr-4"} h-10 bg-secondary/50 border-transparent focus:border-border`}
               />
             </form>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1">
+          {/* Desktop Icons */}
+          <div className="hidden md:flex items-center gap-2">
+            {user ? (
+              <>
+                <Button variant="ghost" size="sm" className="text-sm" onClick={() => router.push("/account")}>
+                  <User className="h-4 w-4 mr-2" />
+                  {t("myAccount")}
+                </Button>
+                <Button variant="ghost" size="sm" className="text-sm" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t("logout")}
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-sm" onClick={() => router.push("/account")}>
+                <User className="h-4 w-4 mr-2" />
+                {t("login")}
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="relative" onClick={() => router.push("/cart")}>
+              <ShoppingCart className="h-5 w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
+                  {itemCount}
+                </span>
+              )}
+            </Button>
+          </div>
+
+          {/* Mobile Icons */}
+          <div className="flex md:hidden items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
               onClick={() => setIsSearchOpen(!isSearchOpen)}
             >
               <Search className="h-5 w-5" />
-              <span className="sr-only">{t("searchPlaceholder")}</span>
             </Button>
-
-            {user?.role?.toUpperCase() === "ADMIN" && (
-              <Link href="/admin">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Settings className="h-5 w-5" />
-                  <span className="sr-only">Admin</span>
-                </Button>
-              </Link>
-            )}
-
-            <Link href="/account">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                <User className="h-5 w-5" />
-                <span className="sr-only">{t("myAccount")}</span>
-              </Button>
-            </Link>
-
-            <Link href="/cart">
-              <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-                <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center text-[10px] font-medium bg-accent text-accent-foreground rounded-full">
-                    {itemCount > 9 ? "9+" : itemCount}
-                  </span>
-                )}
-                <span className="sr-only">{t("cart")}</span>
-              </Button>
-            </Link>
-
+            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground" onClick={() => router.push("/cart")}>
+              <ShoppingCart className="h-5 w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-medium">
+                  {itemCount}
+                </span>
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -155,46 +159,68 @@ export function Header() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <nav className="lg:hidden pb-4 border-t border-border pt-4">
-            <ul className="space-y-1">
-              <li>
-                <Link
-                  href="/"
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {t("home")}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/category/carrosserie"
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {t("carrosserie")}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/category/optique"
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {t("optique")}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/account"
-                  className="flex items-center px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {t("myAccount")}
-                </Link>
-              </li>
-            </ul>
-          </nav>
+          <div className="lg:hidden border-t border-border py-4">
+            <nav className="flex flex-col space-y-2">
+              <Link
+                href="/"
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary rounded-md transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {t("home")}
+              </Link>
+              <Link
+                href="/category/carrosserie"
+                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground rounded-md transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {t("carrosserie")}
+              </Link>
+              <Link
+                href="/category/optique"
+                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground rounded-md transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {t("optique")}
+              </Link>
+              <div className="border-t border-border pt-2 mt-2">
+                {user ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false)
+                        router.push("/account")
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground rounded-md transition-colors flex items-center"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      {t("myAccount")}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false)
+                        handleLogout()
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground rounded-md transition-colors flex items-center"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      {t("logout")}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false)
+                      router.push("/account")
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground rounded-md transition-colors flex items-center"
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    {t("login")}
+                  </button>
+                )}
+              </div>
+            </nav>
+          </div>
         )}
       </div>
     </header>
