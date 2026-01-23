@@ -43,6 +43,7 @@ export async function GET() {
         const revenue = Number(revenueData._sum.total || 0)
 
         return NextResponse.json({
+            productsCount: productsCountTotal, // Total products (frontend expects this field)
             productsCountActive,
             productsCountTotal,
             ordersCount,
