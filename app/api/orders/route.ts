@@ -263,6 +263,44 @@ export async function POST(request: NextRequest) {
             return newOrder
         })
 
+        // Create shipment with shipping provider (after transaction completes)
+        try {
+            const { createShipment } = await import('@/lib/yalidine-api')
+
+            const shipmentResult = await createShipment({
+                fullName: shippingFullName,
+                phone: phoneValidation.normalized!,
+                address: shippingAddress1,
+                wilaya: shippingWilaya,
+                commune: shippingCommune,
+                orderNumber: paymentCode,
+                items: orderItemsData.map(item => ({
+                    name: item.snapshotNameFr,
+                    quantity: item.quantity,
+                    price: parseFloat(item.snapshotPrice.toString()),
+                })),
+                totalAmount: total,
+                notes: shippingNotes || undefined,
+            })
+
+            // Update order with tracking information
+            await prisma.order.update({
+                where: { id: order.id },
+                data: {
+                    shippingProvider: shippingMethod || "YALIDINE",
+                    shippingTrackingId: shipmentResult.trackingId,
+                    shippingStatus: shipmentResult.status,
+                    shippingLastSync: new Date(),
+                },
+            })
+
+            console.log(`✅ Shipment created for order ${paymentCode}: ${shipmentResult.trackingId}`)
+        } catch (shipmentError) {
+            // Log error but don't fail the order
+            console.error('⚠️ Failed to create shipment:', shipmentError)
+            console.log('Order created successfully, but shipment creation failed')
+        }
+
         return NextResponse.json({
             order: {
                 id: order.id,

@@ -144,6 +144,12 @@ model Order {
   shippingNotes    String?        @map("shipping_notes") @db.Text
   shippingMethod   ShippingMethod @default(YALIDINE) @map("shipping_method")
 
+  // Shipping provider tracking
+  shippingProvider   String?   @default("YALIDINE") @map("shipping_provider")
+  shippingTrackingId String?   @map("shipping_tracking_id")
+  shippingStatus     String?   @map("shipping_status")
+  shippingLastSync   DateTime? @map("shipping_last_sync")
+
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id])
 
