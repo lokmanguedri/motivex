@@ -69,7 +69,6 @@ export async function getCommunesByWilaya(wilayaId: string): Promise<Commune[]> 
         const data = await response.json()
         return data.communes || data.data || []
     } catch (error) {
-        console.error('Error fetching communes:', error)
         throw error
     }
 }
@@ -126,7 +125,6 @@ export async function createShipment(shipmentData: ShipmentData): Promise<Shipme
             estimatedDelivery: undefined,
         }
     } catch (error) {
-        console.error('Error creating shipment:', error)
         throw error
     }
 }
@@ -156,7 +154,6 @@ export async function getShipmentStatus(trackingId: string): Promise<StatusRespo
             lastUpdate: data.updated_at || new Date().toISOString(),
         }
     } catch (error) {
-        console.error('Error fetching shipment status:', error)
         throw error
     }
 }
@@ -166,7 +163,6 @@ export async function getShipmentStatus(trackingId: string): Promise<StatusRespo
  */
 export function verifyWebhookSignature(payload: string, signature: string): boolean {
     if (!WEBHOOK_SECRET) {
-        console.warn('WEBHOOK_SECRET not configured')
         return false
     }
 
@@ -176,8 +172,7 @@ export function verifyWebhookSignature(payload: string, signature: string): bool
         const digest = hmac.update(payload).digest('hex')
 
         return digest === signature
-    } catch (error) {
-        console.error('Error verifying webhook signature:', error)
+    } catch {
         return false
     }
 }

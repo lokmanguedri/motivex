@@ -57,28 +57,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (result?.ok) {
-        // Wait for session to be established
         await new Promise(resolve => setTimeout(resolve, 500))
 
-        // Fetch session to get role
         const sessionRes = await fetch("/api/auth/session")
         const sessionData = await sessionRes.json()
 
-
-        console.log("Session after login:", sessionData)
-
         if (!sessionData?.user) {
-          console.error("Session not established, redirecting to account")
           window.location.href = "/account"
           return true
         }
 
-        // Redirect based on role
         if (sessionData.user.role === "ADMIN") {
-          console.log("Redirecting admin to /admin")
           window.location.href = "/admin"
         } else {
-          console.log("Redirecting user to /account")
           window.location.href = "/account"
         }
 
@@ -87,7 +78,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return false
     } catch (error) {
-      console.error("Login error:", error)
       return false
     }
   }
@@ -115,10 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || "Registration failed")
       }
 
-      // Auto-login after successful registration
       return await login(email, password)
     } catch (error) {
-      console.error("Register error:", error)
       throw error
     }
   }
@@ -128,8 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const addOrder = (order: Order) => {
-    // Will be implemented with API in Phase 3.2
-    console.log("Add order not yet implemented:", order)
+    // Implementation pending
   }
 
   return (

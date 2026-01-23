@@ -27,14 +27,12 @@ export function CategoriesSection() {
       try {
         const response = await fetch("/api/categories", { cache: "no-store" })
         if (!response.ok) {
-          console.error("Failed to fetch categories")
           setCategories([])
           return
         }
         const data = await response.json()
         setCategories(data.categories || [])
-      } catch (error) {
-        console.error("Error fetching categories:", error)
+      } catch {
         setCategories([])
       } finally {
         setIsLoading(false)

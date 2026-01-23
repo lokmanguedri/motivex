@@ -4,9 +4,6 @@ import { hash } from "bcryptjs"
 const prisma = new PrismaClient()
 
 async function main() {
-    console.log("🌱 Seeding database...")
-
-    // Get admin credentials from environment
     const adminEmail = process.env.ADMIN_EMAIL
     const adminPassword = process.env.ADMIN_PASSWORD
 
@@ -16,11 +13,9 @@ async function main() {
         )
     }
 
-    // Hash password
     const passwordHash = await hash(adminPassword, 10)
 
-    // Upsert admin user (create or update)
-    const admin = await prisma.user.upsert({
+    await prisma.user.upsert({
         where: { email: adminEmail },
         update: {
             passwordHash,
@@ -34,19 +29,11 @@ async function main() {
             role: "ADMIN",
         },
     })
-
-    console.log("✅ Admin user created/updated:")
-    console.log(`   Email: ${admin.email}`)
-    console.log(`   Role: ${admin.role}`)
-    console.log(`   ID: ${admin.id}`)
-
-    console.log("\n🎉 Seeding completed successfully!")
 }
 
 main()
     .catch((error) => {
-        console.error("❌ Seeding failed:")
-        console.error(error)
+        console.error("Seeding failed:", error)
         process.exit(1)
     })
     .finally(async () => {

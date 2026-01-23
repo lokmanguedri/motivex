@@ -4,13 +4,12 @@ import { compare } from "bcryptjs"
 import { prisma } from "./prisma"
 import { bootstrapAdminOnce } from "./bootstrap-admin"
 
-// Runtime environment validation
 if (process.env.NODE_ENV === "production") {
     if (!process.env.NEXTAUTH_SECRET) {
-        console.error("❌ CRITICAL: NEXTAUTH_SECRET is missing in production!")
+        throw new Error("NEXTAUTH_SECRET is required in production")
     }
     if (!process.env.NEXTAUTH_URL || process.env.NEXTAUTH_URL.includes("localhost")) {
-        console.error("❌ CRITICAL: NEXTAUTH_URL must be set to production domain!")
+        throw new Error("NEXTAUTH_URL must be set to production domain")
     }
 }
 
@@ -25,15 +24,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                // Bootstrap admin at runtime (first auth attempt)
-                await bootstrapAdminOnce().catch(err => {
-                    console.error("Bootstrap failed during authorize:", err)
-                })
+                await bootstrapAdminOnce().catch(() => { })
 
                 if (!credentials?.email || !credentials?.password) {
-                    if (process.env.NODE_ENV === "development") {
-                        console.log("[Auth] Missing credentials")
-                    }
                     return null
                 }
 
@@ -51,25 +44,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 )
 
                 if (!isValid) {
-                    if (process.env.NODE_ENV === "development") {
-                        console.log("[Auth] Invalid password for:", credentials.email)
-                    }
                     return null
                 }
 
-                // Return user object that will be stored in JWT
-                const authUser = {
+                return {
                     id: user.id,
                     email: user.email,
                     name: `${user.firstName} ${user.lastName}`,
                     role: user.role,
                 }
-
-                if (process.env.NODE_ENV === "development") {
-                    console.log("[Auth] User authorized:", authUser.email, "Role:", authUser.role)
-                }
-
-                return authUser
             },
         }),
     ],
@@ -83,26 +66,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return baseUrl
         },
         async jwt({ token, user }) {
-            // On sign in, add role to token
             if (user) {
                 token.role = user.role
                 token.id = user.id
-
-                if (process.env.NODE_ENV === "development") {
-                    console.log("[Auth] JWT created for:", user.email, "Role:", user.role)
-                }
             }
             return token
         },
         async session({ session, token }) {
-            // Add role and id to session
             if (session.user) {
                 session.user.role = token.role as "USER" | "ADMIN"
                 session.user.id = token.id as string
-
-                if (process.env.NODE_ENV === "development") {
-                    console.log("[Auth] Session created for:", session.user.email, "Role:", session.user.role)
-                }
             }
             return session
         },

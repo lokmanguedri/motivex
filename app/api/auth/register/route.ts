@@ -84,7 +84,6 @@ export async function POST(request: NextRequest) {
             { status: 201 }
         )
     } catch (error) {
-        console.error("Registration error:", error)
 
         // Handle Prisma unique constraint errors
         if (error instanceof Prisma.PrismaClientKnownRequestError) {

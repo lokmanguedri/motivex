@@ -49,7 +49,7 @@ export function validateAlgerianPhone(phone: string): PhoneValidationResult {
 
     return {
         valid: false,
-        error: "Format invalide. Utilisez: 05XX XXX XXX, 06XX XXX XXX, 07XX XXX XXX / صيغة غير صالحة"
+        error: "Format invalide. Utilisez: 0550 123 456 / صيغة غير صالحة"
     }
 }
 

@@ -19,15 +19,13 @@ export function FeaturedProducts() {
       try {
         const response = await fetch("/api/products?limit=6")
         if (!response.ok) {
-          console.error("Failed to fetch products")
           setProducts([])
           return
         }
         const data = await response.json()
         const mappedProducts = mapApiProductsToUi(data.products || [])
         setProducts(mappedProducts)
-      } catch (error) {
-        console.error("Error fetching products:", error)
+      } catch {
         setProducts([])
       } finally {
         setIsLoading(false)
