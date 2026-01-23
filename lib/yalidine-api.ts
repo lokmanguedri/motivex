@@ -30,6 +30,7 @@ export interface ShipmentData {
     }>
     totalAmount: number
     notes?: string
+    shippingMethod?: string
 }
 
 export interface ShipmentResponse {
@@ -78,6 +79,9 @@ export async function getCommunesByWilaya(wilayaId: string): Promise<Commune[]> 
  */
 export async function createShipment(shipmentData: ShipmentData): Promise<ShipmentResponse> {
     try {
+        // Determine if this is a desk pickup
+        const isStopdesk = shipmentData.shippingMethod === 'DESK_PICKUP'
+
         // Yalidine API expects an array of parcels
         const parcels = [{
             order_id: shipmentData.orderNumber,
@@ -91,7 +95,7 @@ export async function createShipment(shipmentData: ShipmentData): Promise<Shipme
             product_list: shipmentData.items.map(item => `${item.name} x${item.quantity}`).join(', '),
             price: shipmentData.totalAmount,
             do_not_call: false,
-            is_stopdesk: false,
+            is_stopdesk: isStopdesk,
             stopdesk_id: null,
             has_exchange: false,
             freeshipping: false,

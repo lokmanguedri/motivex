@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
                 ? { isActive: false }
                 : {} // 'all' - no filter
 
-        // Admin can see filtered products
+        // Admin can see filtered products - force no cache for fresh data
         const products = await prisma.product.findMany({
             where,
             include: {
@@ -40,7 +40,17 @@ export async function GET(request: NextRequest) {
             orderBy: { createdAt: "desc" },
         })
 
-        return NextResponse.json({ products })
+        // Get total count for stats
+        const totalCount = await prisma.product.count({ where })
+
+        return NextResponse.json({
+            products,
+            totalCount
+        }, {
+            headers: {
+                'Cache-Control': 'no-store, must-revalidate',
+            }
+        })
     } catch (error) {
         console.error("Error fetching products:", error)
         return NextResponse.json(

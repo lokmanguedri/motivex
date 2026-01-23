@@ -281,6 +281,7 @@ export async function POST(request: NextRequest) {
                 })),
                 totalAmount: total,
                 notes: shippingNotes || undefined,
+                shippingMethod: shippingMethod || "HOME_DELIVERY",
             })
 
             // Update order with tracking information

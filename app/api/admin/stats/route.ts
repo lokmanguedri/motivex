@@ -48,6 +48,10 @@ export async function GET() {
             ordersCount,
             pendingOrders,
             revenue
+        }, {
+            headers: {
+                'Cache-Control': 'no-store, must-revalidate',
+            }
         })
     } catch (error) {
         console.error("Error fetching admin stats:", error)

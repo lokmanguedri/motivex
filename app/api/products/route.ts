@@ -51,12 +51,14 @@ export async function GET(request: NextRequest) {
             where.year = parseInt(year)
         }
 
+        // Text search across multiple fields
         if (search) {
             where.OR = [
                 { nameFr: { contains: search, mode: "insensitive" } },
                 { nameAr: { contains: search, mode: "insensitive" } },
                 { sku: { contains: search, mode: "insensitive" } },
                 { brand: { contains: search, mode: "insensitive" } },
+                { model: { contains: search, mode: "insensitive" } },
             ]
         }
 

@@ -32,7 +32,7 @@ export default function CheckoutClient() {
         address: "",
         wilaya: "",
         commune: "",
-        shippingMethod: "YALIDINE",
+        shippingMethod: "HOME_DELIVERY",
         paymentMethod: "COD",
         baridiMobReference: "",
     })
@@ -317,33 +317,33 @@ export default function CheckoutClient() {
                                             onValueChange={(value) => handleChange("shippingMethod", value)}
                                             className="space-y-3">
                                             <label
-                                                htmlFor="YALIDINE"
-                                                className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${formData.shippingMethod === "YALIDINE"
+                                                htmlFor="HOME_DELIVERY"
+                                                className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${formData.shippingMethod === "HOME_DELIVERY"
                                                     ? "border-primary bg-primary/5"
                                                     : "border-border hover:bg-secondary/50"
                                                     }`}
                                             >
-                                                <RadioGroupItem value="YALIDINE" id="YALIDINE" />
+                                                <RadioGroupItem value="HOME_DELIVERY" id="HOME_DELIVERY" />
                                                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
                                                     <Truck className="w-5 h-5 text-primary" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-medium text-foreground">Yalidine</p>
+                                                    <p className="font-medium text-foreground">{language === "fr" ? "Livraison à domicile" : "التوصيل إلى المنزل"}</p>
                                                 </div>
                                             </label>
                                             <label
-                                                htmlFor="GUEPEX"
-                                                className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${formData.shippingMethod === "GUEPEX"
+                                                htmlFor="DESK_PICKUP"
+                                                className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${formData.shippingMethod === "DESK_PICKUP"
                                                     ? "border-primary bg-primary/5"
                                                     : "border-border hover:bg-secondary/50"
                                                     }`}
                                             >
-                                                <RadioGroupItem value="GUEPEX" id="GUEPEX" />
+                                                <RadioGroupItem value="DESK_PICKUP" id="DESK_PICKUP" />
                                                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
                                                     <Truck className="w-5 h-5 text-primary" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-medium text-foreground">Guepex</p>
+                                                    <p className="font-medium text-foreground">{language === "fr" ? "Retrait au bureau" : "التوصيل إلى المكتب"}</p>
                                                 </div>
                                             </label>
                                         </RadioGroup>

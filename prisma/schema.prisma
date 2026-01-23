@@ -97,7 +97,13 @@ model Product {
   brand    String?
   model    String?
   year     Int?
-  isActive Boolean  @default(true) @map("is_active")
+
+  // Fitment year range support
+  fitmentYearsFrom Int?    @map("fitment_years_from")
+  fitmentYearsTo   Int?    @map("fitment_years_to")
+  fitmentNotes     String? @map("fitment_notes")
+
+  isActive Boolean @default(true) @map("is_active")
 
   categoryId String   @map("category_id")
   category   Category @relation(fields: [categoryId], references: [id])
