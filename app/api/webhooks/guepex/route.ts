@@ -83,19 +83,19 @@ export const runtime = 'nodejs'
 /**
  * GET /api/webhooks/guepex
  * Webhook verification endpoint (CRC check)
+ * Docs: Echo the crc_token value when subscribe and crc_token are present.
  */
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const crc_token = searchParams.get('crc_token')
+    const subscribe = searchParams.get('subscribe')
 
-    if (crc_token) {
-        const secret = process.env.GUEPEX_WEBHOOK_SECRET || process.env.GUEPEX_API_KEY || ''
-        const crypto = require('crypto')
-        // Try Hex encoding (more common standard)
-        const hmac = crypto.createHmac('sha256', secret).update(crc_token).digest('hex')
-
-        return NextResponse.json({
-            response_token: hmac
+    if (crc_token && subscribe) {
+        // Official docs: "echo the crc_token value we sent"
+        // Return plain text, not JSON
+        return new NextResponse(crc_token, {
+            status: 200,
+            headers: { 'Content-Type': 'text/plain' }
         })
     }
 
