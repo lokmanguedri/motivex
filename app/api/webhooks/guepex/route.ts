@@ -82,8 +82,23 @@ export const runtime = 'nodejs'
 
 /**
  * GET /api/webhooks/guepex
- * Simple endpoint for webhook verification (some providers check for 200 OK on GET)
+ * Webhook verification endpoint (CRC check)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const { searchParams } = new URL(request.url)
+    const crc_token = searchParams.get('crc_token')
+
+    if (crc_token) {
+        const secret = process.env.GUEPEX_WEBHOOK_SECRET || process.env.GUEPEX_API_KEY || ''
+        const crypto = require('crypto')
+        // Try Hex encoding (more common standard)
+        const hmac = crypto.createHmac('sha256', secret).update(crc_token).digest('hex')
+
+        return NextResponse.json({
+            response_token: `sha256=${hmac}`,
+            crc_token: crc_token // Echo back just in case
+        })
+    }
+
     return NextResponse.json({ message: 'Guepex Webhook Endpoint Ready' })
 }
