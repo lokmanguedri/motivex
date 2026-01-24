@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             response_token: `sha256=${hmac}`,
-            crc_token: crc_token // Echo back just in case
+            crc_token: `sha256=${hmac}` // Try putting the HMAC here too, as the error references this field
         })
     }
 
