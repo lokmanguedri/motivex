@@ -95,8 +95,7 @@ export async function GET(request: NextRequest) {
         const hmac = crypto.createHmac('sha256', secret).update(crc_token).digest('hex')
 
         return NextResponse.json({
-            response_token: `sha256=${hmac}`,
-            crc_token: `sha256=${hmac}` // Try putting the HMAC here too, as the error references this field
+            response_token: hmac
         })
     }
 
