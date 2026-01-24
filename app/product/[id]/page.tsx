@@ -143,7 +143,15 @@ export default function ProductPage() {
 
               {/* Compatibility */}
               <p className="text-muted-foreground mb-4">
-                {product.brand} {product.model} ({product.year})
+                {product.brand} {product.model}
+                {product.fitmentYearsFrom && product.fitmentYearsTo
+                  ? ` (${product.fitmentYearsFrom} - ${product.fitmentYearsTo})`
+                  : product.fitmentYearsFrom
+                    ? ` (${product.fitmentYearsFrom}+)`
+                    : product.year
+                      ? ` (${product.year})`
+                      : ''
+                }
               </p>
 
               {/* Stock Status */}

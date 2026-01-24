@@ -45,8 +45,8 @@ export function ProductCard({ product }: { product: Product }) {
               </span>
             )}
             <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ms-auto ${isInStock
-                ? "bg-accent/90 text-accent-foreground"
-                : "bg-muted text-muted-foreground"
+              ? "bg-accent/90 text-accent-foreground"
+              : "bg-muted text-muted-foreground"
               }`}>
               {isInStock ? t("inStock") : t("outOfStock")}
             </span>
@@ -82,7 +82,15 @@ export function ProductCard({ product }: { product: Product }) {
 
           {/* Brand & Model */}
           <p className="text-xs text-muted-foreground mb-3">
-            {product.brand} {product.model} ({product.year})
+            {product.brand} {product.model}
+            {product.fitmentYearsFrom && product.fitmentYearsTo
+              ? ` (${product.fitmentYearsFrom} - ${product.fitmentYearsTo})`
+              : product.fitmentYearsFrom
+                ? ` (${product.fitmentYearsFrom}+)`
+                : product.year
+                  ? ` (${product.year})`
+                  : ''
+            }
           </p>
 
           {/* Price Block */}
