@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCommunesByWilaya } from '@/lib/yalidine-api'
+import { getGuepexCommunes } from '@/lib/guepex-api'
+
+const PROVIDER = process.env.SHIPPING_PROVIDER || 'YALIDINE'
 
 /**
  * GET /api/shipping/communes?wilaya=X
@@ -17,7 +20,15 @@ export async function GET(request: NextRequest) {
             )
         }
 
-        const communes = await getCommunesByWilaya(wilayaId)
+        let communes = []
+
+        if (PROVIDER === 'GUEPEX') {
+            const allCommunes = await getGuepexCommunes()
+            // Filter by wilaya_id (ensure types match, string vs int)
+            communes = allCommunes.filter((c: any) => c.wilaya_id == wilayaId)
+        } else {
+            communes = await getCommunesByWilaya(wilayaId)
+        }
 
         return NextResponse.json({
             success: true,

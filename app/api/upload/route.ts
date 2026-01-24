@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// Check for Supabase keys
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
-
 export async function POST(request: NextRequest) {
     try {
+        // Read keys inside the request handler to ensure they are fresh
+        const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+
         const formData = await request.formData()
         const file = formData.get("file") as File
 
@@ -35,20 +35,24 @@ export async function POST(request: NextRequest) {
                 const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/products/${filename}`
                 return NextResponse.json({ url: publicUrl })
             } else {
-                console.error("Supabase Upload Error:", await response.text())
-                // Fallthrough to mock if upload fails (usually due to missing bucket)
+                const errorText = await response.text()
+                console.error("Supabase Upload Error:", errorText)
+                return NextResponse.json(
+                    { error: `Supabase Error: ${errorText}` },
+                    { status: response.status }
+                )
             }
         }
 
-        // 2. Mock response if no keys or upload failed (for dev/demo purposes)
-        // In a real production scenario without keys, this should error out.
-        // But to keep the UI working for the user to see the interaction:
-        console.warn("Using mock upload response due to missing keys or upload failure")
+        // 2. Mock response if no keys
+        const missing = []
+        if (!SUPABASE_URL) missing.push("NEXT_PUBLIC_SUPABASE_URL")
+        if (!SUPABASE_KEY) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
-        // Return a reliable placeholder or the blob URL if we could persist it (we can't easily persisting blob to disk in stateless lambda)
-        // So we return an error asking for keys if this is "Production Hardening"
+        console.error("Missing vars detected:", missing)
+
         return NextResponse.json(
-            { error: "Upload configuration missing. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env" },
+            { error: `Upload configuration missing. Missing variables: ${missing.join(", ")}. Please check .env` },
             { status: 500 }
         )
 

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createShipment, type ShipmentData } from '@/lib/yalidine-api'
+import { createShipment as createYalidineShipment, type ShipmentData } from '@/lib/yalidine-api'
+import { createGuepexShipment, type GuepexShipmentData } from '@/lib/guepex-api'
+
+const PROVIDER = process.env.SHIPPING_PROVIDER || 'YALIDINE'
 
 /**
  * POST /api/shipping/create
@@ -20,6 +23,30 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // --- GUEPEX IMPLEMENTATION ---
+        if (PROVIDER === 'GUEPEX') {
+            const shipmentData: GuepexShipmentData = {
+                fullName: body.fullName,
+                phone: body.phone,
+                address: body.address,
+                wilaya: body.wilaya,
+                commune: body.commune,
+                orderNumber: body.orderNumber,
+                items: body.items || [],
+                totalAmount: parseFloat(body.totalAmount),
+                notes: body.notes,
+                shippingMethod: body.shippingMethod
+            }
+            const result = await createGuepexShipment(shipmentData)
+            return NextResponse.json({
+                success: true,
+                trackingId: result.trackingId,
+                label: result.label,
+                status: result.status,
+            })
+        }
+
+        // --- YALIDINE IMPLEMENTATION (Default) ---
         const shipmentData: ShipmentData = {
             fullName: body.fullName,
             phone: body.phone,
@@ -30,9 +57,10 @@ export async function POST(request: NextRequest) {
             items: body.items || [],
             totalAmount: parseFloat(body.totalAmount),
             notes: body.notes,
+            shippingMethod: body.shippingMethod
         }
 
-        const result = await createShipment(shipmentData)
+        const result = await createYalidineShipment(shipmentData)
 
         return NextResponse.json({
             success: true,
