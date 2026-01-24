@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server'
-import { getGuepexCommunes } from '@/lib/guepex-api'
+import { getGuepexWilayas } from '@/lib/guepex-api'
 
 export const revalidate = 86400 // Cache API response for 24h
 
 export async function GET() {
     try {
-        const communes = await getGuepexCommunes()
-        return NextResponse.json(communes)
+        const wilayas = await getGuepexWilayas()
+
+        // Ensure standard format for frontend
+        return NextResponse.json(wilayas)
     } catch (error) {
         return NextResponse.json(
-            { error: "Failed to fetch communes" },
+            { error: "Failed to fetch wilayas" },
             { status: 500 }
         )
     }

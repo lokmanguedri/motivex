@@ -153,8 +153,14 @@ model Order {
   // Shipping provider tracking
   shippingProvider   String?   @default("YALIDINE") @map("shipping_provider")
   shippingTrackingId String?   @map("shipping_tracking_id")
+  shippingLabel      String?   @map("shipping_label")
   shippingStatus     String?   @map("shipping_status")
+  shippingRawStatus  String?   @map("shipping_raw_status") // Exact status from provider
   shippingLastSync   DateTime? @map("shipping_last_sync")
+  shippingMeta       Json?     @map("shipping_meta") // Full payload for debugging
+
+  shippingWilayaCode  String? @map("shipping_wilaya_code")
+  shippingCommuneCode String? @map("shipping_commune_code")
 
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id])

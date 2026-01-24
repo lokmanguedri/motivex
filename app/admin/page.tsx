@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import {
   Package, ShoppingCart, Plus, Pencil, Trash2, ArrowLeft, LogOut, TrendingUp, Clock,
-  Search, Filter
+  Search, Filter, Truck
 } from "lucide-react"
 import { MotivexLogo } from "@/components/motivex-logo"
 import { Suspense } from "react"
@@ -510,6 +510,41 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error updating order:', error)
       toast.error(language === 'fr' ? 'Erreur lors de la mise à jour' : 'خطأ في التحديث')
+    }
+  }
+
+  // Shipment Handler
+  const handleShipOrder = async (orderId: string) => {
+    if (!confirm(language === 'fr' ? 'Créer une expédition Guepex ?' : 'هل تريد إنشاء شحنة Guepex؟')) return
+
+    const toastId = toast.loading(language === 'fr' ? 'Création de l\'expédition...' : 'جاري إنشاء الشحنة...')
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/ship`, {
+        method: 'POST'
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Shipping failed')
+      }
+
+      const data = await res.json()
+      toast.success(language === 'fr' ? `Expédié! Tracking: ${data.trackingId}` : `تم الشحن! تتبع: ${data.trackingId}`)
+
+      // Refresh orders
+      const refreshRes = await fetch('/api/admin/orders', { cache: 'no-store' })
+      if (refreshRes.ok) {
+        const data = await refreshRes.json()
+        setOrders(data.orders)
+        // Update selected order to show new status immediately
+        const updatedOrder = data.orders.find((o: any) => o.id === orderId)
+        if (updatedOrder) setSelectedOrder(updatedOrder)
+      }
+    } catch (error: any) {
+      console.error('Shipping error:', error)
+      toast.error(error.message)
+    } finally {
+      toast.dismiss(toastId)
     }
   }
 
@@ -1016,22 +1051,67 @@ export default function AdminDashboard() {
                                             <Label className="text-sm font-medium mb-2 block">
                                               {language === "fr" ? "Changer le statut" : "تغيير الحالة"}
                                             </Label>
-                                            <Select
-                                              value={order.status}
-                                              onValueChange={(value) => handleUpdateOrder(order.id, { status: value })}
-                                            >
-                                              <SelectTrigger className="h-10 bg-card border-border">
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                <SelectItem value="PENDING">PENDING</SelectItem>
-                                                <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
-                                                <SelectItem value="SHIPPED">SHIPPED</SelectItem>
-                                                <SelectItem value="DELIVERED">DELIVERED</SelectItem>
-                                                <SelectItem value="RETURNED">RETURNED</SelectItem>
-                                              </SelectContent>
-                                            </Select>
+                                            <div className="flex gap-2">
+                                              <Select
+                                                value={order.status}
+                                                onValueChange={(value) => handleUpdateOrder(order.id, { status: value })}
+                                              >
+                                                <SelectTrigger className="h-10 bg-card border-border flex-1">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="PENDING">PENDING</SelectItem>
+                                                  <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
+                                                  <SelectItem value="SHIPPED">SHIPPED</SelectItem>
+                                                  <SelectItem value="DELIVERED">DELIVERED</SelectItem>
+                                                  <SelectItem value="RETURNED">RETURNED</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+
+                                              {!order.shippingTrackingId && (
+                                                <Button
+                                                  variant="outline"
+                                                  className="border-primary text-primary hover:bg-primary/10"
+                                                  onClick={() => handleShipOrder(order.id)}
+                                                >
+                                                  <Truck className="w-4 h-4 me-2" />
+                                                  {language === "fr" ? "Expédier (Guepex)" : "شحن (Guepex)"}
+                                                </Button>
+                                              )}
+                                            </div>
                                           </div>
+
+                                          {/* Shipping Details */}
+                                          {(order.shippingTrackingId || order.shippingLabel) && (
+                                            <div className="border-t border-border pt-4">
+                                              <h4 className="font-medium mb-2">{language === "fr" ? "Expédition" : "الشحن"}</h4>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                {order.shippingTrackingId && (
+                                                  <div>
+                                                    <Label className="text-xs text-muted-foreground">{language === "fr" ? "Tracking ID" : "رقم التتبع"}</Label>
+                                                    <p className="text-sm font-mono font-medium">{order.shippingTrackingId}</p>
+                                                  </div>
+                                                )}
+                                                {order.shippingLabel && (
+                                                  <div>
+                                                    <Label className="text-xs text-muted-foreground">{language === "fr" ? "Étiquette" : "الملصق"}</Label>
+                                                    <a
+                                                      href={order.shippingLabel}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="text-sm text-primary hover:underline block truncate"
+                                                    >
+                                                      {language === "fr" ? "Télécharger PDF" : "تحميل PDF"}
+                                                    </a>
+                                                  </div>
+                                                )}
+                                                <div className="col-span-2">
+                                                  <Label className="text-xs text-muted-foreground">{language === "fr" ? "Statut Expédition" : "حالة الشحن"}</Label>
+                                                  <p className="text-sm">{order.shippingRawStatus || "-"}</p>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </DialogContent>

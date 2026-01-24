@@ -66,10 +66,13 @@ export async function POST(request: NextRequest) {
             shippingWilaya,
             shippingCommune,
             shippingAddress1,
-            shippingNotes
+            shippingNotes,
+            // New fields
+            shippingWilayaCode,
+            shippingCommuneCode
         } = body
 
-        // Validation
+        // Validation - Required Fields
         if (!items || !Array.isArray(items) || items.length === 0) {
             return NextResponse.json(
                 { error: "Items are required" },
@@ -84,6 +87,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // Note: shippingMethod might come as null/undefined, defaulting to Yalidine is handled later, but strict check is good if provided.
         if (shippingMethod && !["YALIDINE", "GUEPEX"].includes(shippingMethod)) {
             return NextResponse.json(
                 { error: "Invalid shipping method" },
@@ -108,10 +112,13 @@ export async function POST(request: NextRequest) {
         }
 
         // VALIDATION: Algerian phone number
-        const phoneValidation = validateAlgerianPhone(shippingPhone)
-        if (!phoneValidation.valid) {
+        // We perform this check here so we can return early.
+        // We will reuse the result or re-validate if needed, but reusing result variable name might need care for scope.
+        // Let's call it phoneValidationResult here.
+        const phoneValidationResult = validateAlgerianPhone(shippingPhone)
+        if (!phoneValidationResult.valid) {
             return NextResponse.json(
-                { error: phoneValidation.error },
+                { error: phoneValidationResult.error },
                 { status: 400 }
             )
         }
@@ -205,11 +212,30 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const shippingPrice = 800 // Fixed shipping for Algeria
+        // Calculate shipping fee dynamically
+        let shippingPrice = 800 // Default fallback
+        const PROVIDER = process.env.SHIPPING_PROVIDER || 'YALIDINE'
+
+        if (PROVIDER === 'GUEPEX' && shippingWilayaCode) {
+            // Import dynamically to avoid side effects if not used? No, safe to import at top usually.
+            const { calculateGuepexFee } = await import('@/lib/guepex-api')
+            const calculatedFee = await calculateGuepexFee(parseInt(shippingWilayaCode)) // Basic check
+            // Or exact check if we have commune code
+            // const { calculateGuepexFeeExact } = await import('@/lib/guepex-api')
+            // const calculatedFee = await calculateGuepexFeeExact(16, parseInt(shippingWilayaCode), parseInt(shippingCommuneCode), false)
+
+            if (calculatedFee !== null) {
+                shippingPrice = calculatedFee
+            }
+        }
+
         const total = subtotal + shippingPrice
 
         // Generate unique payment code
         const paymentCode = await generatePaymentCode()
+
+        // Phone is already validated above.
+        // Use phoneValidationResult from upper scope.
 
         // Create order with payment in transaction + ATOMIC STOCK DEDUCTION
         const order = await prisma.$transaction(async (tx: any) => {
@@ -235,13 +261,17 @@ export async function POST(request: NextRequest) {
                     shippingPrice,
                     total,
                     shippingFullName,
-                    shippingPhone: phoneValidation.normalized!, // Use normalized phone
+                    shippingPhone: phoneValidationResult.normalized!, // Use normalized from top validation
                     shippingWilaya,
                     shippingCommune,
                     shippingAddress1,
                     shippingNotes: shippingNotes || null,
                     shippingMethod: shippingMethod || "YALIDINE",
                     userId: session.user.id,
+                    // New Fields
+                    shippingWilayaCode,
+                    shippingCommuneCode,
+                    shippingProvider: PROVIDER,
                     items: {
                         create: orderItemsData
                     },
@@ -263,44 +293,7 @@ export async function POST(request: NextRequest) {
             return newOrder
         })
 
-        // Create shipment with shipping provider (after transaction completes)
-        try {
-            const { createShipment } = await import('@/lib/yalidine-api')
 
-            const shipmentResult = await createShipment({
-                fullName: shippingFullName,
-                phone: phoneValidation.normalized!,
-                address: shippingAddress1,
-                wilaya: shippingWilaya,
-                commune: shippingCommune,
-                orderNumber: paymentCode,
-                items: orderItemsData.map(item => ({
-                    name: item.snapshotNameFr,
-                    quantity: item.quantity,
-                    price: parseFloat(item.snapshotPrice.toString()),
-                })),
-                totalAmount: total,
-                notes: shippingNotes || undefined,
-                shippingMethod: shippingMethod || "HOME_DELIVERY",
-            })
-
-            // Update order with tracking information
-            await prisma.order.update({
-                where: { id: order.id },
-                data: {
-                    shippingProvider: shippingMethod || "YALIDINE",
-                    shippingTrackingId: shipmentResult.trackingId,
-                    shippingStatus: shipmentResult.status,
-                    shippingLastSync: new Date(),
-                },
-            })
-
-            console.log(`✅ Shipment created for order ${paymentCode}: ${shipmentResult.trackingId}`)
-        } catch (shipmentError) {
-            // Log error but don't fail the order
-            console.error('⚠️ Failed to create shipment:', shipmentError)
-            console.log('Order created successfully, but shipment creation failed')
-        }
 
         return NextResponse.json({
             order: {

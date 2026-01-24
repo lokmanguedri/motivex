@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyWebhookSignature, mapShippingStatus } from '@/lib/yalidine-api'
+import { verifyGuepexSignature, mapGuepexStatus } from '@/lib/guepex-api'
 import { prisma } from '@/lib/prisma'
+
+export const runtime = 'nodejs' // Required for raw body reading if needed, but Next.js request.text() works fine
 
 /**
  * POST /api/webhooks/guepex
@@ -9,13 +11,11 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
     try {
         const body = await request.text()
-        const signature = request.headers.get('x-webhook-signature') || ''
+        const signature = request.headers.get('x-yalidine-signature') || request.headers.get('x-guepex-signature') || ''
 
-        // Note: verifyWebhookSignature checks process.env.GUEPEX_WEBHOOK_SECRET if configured
-        // If Guepex doesn't sign requests or uses a different header, this might need adjustment.
-        // For now, we reuse the robust logic assuming similarity to Yalidine.
-        if (process.env.GUEPEX_WEBHOOK_SECRET && !verifyWebhookSignature(body, signature)) {
-            console.warn('Invalid webhook signature')
+        // Verify signature
+        if (!verifyGuepexSignature(body, signature)) {
+            console.warn('Invalid Guepex webhook signature')
             return NextResponse.json(
                 { error: 'Invalid signature' },
                 { status: 401 }
@@ -24,66 +24,83 @@ export async function POST(request: NextRequest) {
 
         const payload = JSON.parse(body)
 
-        // Extract tracking ID and status
-        const trackingId = payload.tracking_id || payload.tracking || payload.id
-        const providerStatus = payload.status || payload.state
+        // 1. Check for 'events' array (parcel_status_updated)
+        // Payload format: { type: 'parcel_status_updated', events: [ { data: { ... } } ] }
+        if (payload.events && Array.isArray(payload.events)) {
 
-        if (!trackingId || !providerStatus) {
-            console.error('Missing tracking ID or status in webhook payload')
-            return NextResponse.json(
-                { error: 'Invalid payload' },
-                { status: 400 }
-            )
+            for (const event of payload.events) {
+                const data = event.data
+                if (!data || !data.tracking) continue
+
+                const trackingId = data.tracking
+                // Status might be nested differently depending on event type?
+                // parcel_status_updated -> data.status
+                // parcel_payment_updated -> data.status (payment status)
+                // We care mostly about shipping status for now.
+
+                const providerStatus = data.status || 'UNKNOWN'
+
+                if (providerStatus) {
+                    const internalStatus = mapGuepexStatus(providerStatus)
+
+                    // Update DB
+                    // Only update if we find the order
+                    const order = await prisma.order.findFirst({
+                        where: { shippingTrackingId: trackingId }
+                    })
+
+                    if (order) {
+                        // Don't revert generic 'SHIPPED' to 'PENDING' if api sends weird updates?
+                        // Trust the mapping:
+
+                        // Special case: payment updated
+                        let paymentUpdate = {}
+                        if (payload.type === 'parcel_payment_updated') {
+                            // If payment is 'receivable' or similar -> potentially update payment status?
+                            // user requirement: "Revenue stats count DELIVERED + PAID"
+                            // If status is 'receivable' -> maybe mark as paid?
+                            // data.status == 'receivable'
+                            if (data.status === 'receivable') {
+                                paymentUpdate = {
+                                    payment: {
+                                        update: {
+                                            status: 'PAID'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        await prisma.order.update({
+                            where: { id: order.id },
+                            data: {
+                                shippingStatus: providerStatus, // The raw French string
+                                shippingRawStatus: providerStatus,
+                                shippingLastSync: new Date(),
+                                // Only update main status if meaningful change
+                                ...(internalStatus !== 'PENDING' ? { status: internalStatus as any } : {}),
+                                ...paymentUpdate
+                            }
+                        })
+                        console.log(`Updated Order ${order.paymentCode} [${trackingId}]: ${providerStatus}`)
+                    }
+                }
+            }
         }
 
-        // Find the order with this tracking ID
-        const order = await prisma.order.findFirst({
-            where: { shippingTrackingId: trackingId },
-        })
+        // Return 200 OK immediately
+        return NextResponse.json({ success: true })
 
-        if (!order) {
-            // It's possible we get updates for orders not in our DB (legacy), just ignore.
-            return NextResponse.json({ message: 'Order not found, ignored.' })
-        }
-
-        // Map provider status to internal status
-        const internalStatus = mapShippingStatus(providerStatus)
-
-        // Update order with new status
-        await prisma.order.update({
-            where: { id: order.id },
-            data: {
-                shippingStatus: providerStatus,
-                shippingLastSync: new Date(),
-                status: internalStatus as any, // Map to OrderStatus enum
-            },
-        })
-
-        console.log(`Updated Guepex order ${order.paymentCode} - Tracking: ${trackingId}, Status: ${providerStatus} -> ${internalStatus}`)
-
-        return NextResponse.json({
-            success: true,
-            message: 'Webhook processed successfully',
-        })
     } catch (error) {
         console.error('Error processing Guepex webhook:', error)
-        return NextResponse.json(
-            {
-                error: 'Webhook processing failed',
-                message: error instanceof Error ? error.message : 'Unknown error'
-            },
-            { status: 500 }
-        )
+        // Return 200 anyway to prevent Guepex from retrying/disabling webhook for internal errors
+        return NextResponse.json({ success: true, warning: "Processed with errors" })
     }
 }
-
-// Disable body parsing to get raw body for signature verification
-export const runtime = 'nodejs'
 
 /**
  * GET /api/webhooks/guepex
  * Webhook verification endpoint (CRC check)
- * Docs: Echo the crc_token value when subscribe and crc_token are present.
  */
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
@@ -91,8 +108,6 @@ export async function GET(request: NextRequest) {
     const subscribe = searchParams.get('subscribe')
 
     if (crc_token && subscribe) {
-        // Official docs: "echo the crc_token value we sent"
-        // Return plain text, not JSON
         return new NextResponse(crc_token, {
             status: 200,
             headers: { 'Content-Type': 'text/plain' }
