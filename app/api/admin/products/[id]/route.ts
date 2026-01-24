@@ -60,7 +60,7 @@ export async function PATCH(
                 year: year ? parseInt(year) : null,
                 categoryId,
                 isActive,
-                ...(images?.length && {
+                ...(images && {
                     images: {
                         deleteMany: {}, // Remove old images
                         create: images.map((img: any, index: number) => ({

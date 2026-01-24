@@ -23,6 +23,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState<Product | null>(null)
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedImage, setSelectedImage] = useState<string>("")
 
   useEffect(() => {
     async function fetchProduct() {
@@ -38,6 +39,7 @@ export default function ProductPage() {
         const data = await response.json()
         const mappedProduct = mapApiProductToUi(data.product)
         setProduct(mappedProduct)
+        setSelectedImage(mappedProduct.image)
 
         // Fetch related products
         if (mappedProduct.category) {
@@ -112,12 +114,13 @@ export default function ProductPage() {
           {/* Product Details */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-16">
             {/* Product Image */}
+            {/* Product Image Gallery */}
             <div className="space-y-4">
-              <div className="relative aspect-square bg-secondary rounded-2xl overflow-hidden">
+              <div className="relative aspect-[4/3] bg-secondary rounded-2xl overflow-hidden border border-border">
                 <img
-                  src={product.image || "/placeholder.svg"}
+                  src={selectedImage || product.image || "/placeholder.svg"}
                   alt={name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
                 {discount > 0 && (
                   <span className="absolute top-4 left-4 px-3 py-1.5 rounded-lg text-sm font-semibold bg-destructive text-destructive-foreground">
@@ -125,6 +128,26 @@ export default function ProductPage() {
                   </span>
                 )}
               </div>
+
+              {/* Thumbnails */}
+              {product.images && product.images.length > 1 && (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                  {product.images.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedImage(img)}
+                      className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${selectedImage === img ? "border-primary" : "border-transparent hover:border-border"
+                        }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`${name} ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Product Info */}

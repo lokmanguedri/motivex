@@ -24,6 +24,7 @@ import {
 import { MotivexLogo } from "@/components/motivex-logo"
 import { Suspense } from "react"
 import Loading from "./loading"
+import { ImageUpload } from "@/components/image-upload"
 
 interface Category {
   id: string
@@ -32,48 +33,36 @@ interface Category {
   nameAr: string
 }
 
+interface ProductFormState {
+  nameFr: string
+  nameAr: string
+  descriptionFr: string
+  descriptionAr: string
+  oldPrice: string
+  newPrice: string
+  category: string
+  brand: string
+  model: string
+  year: string
+  fitmentYearsFrom: string
+  fitmentYearsTo: string
+  stock: string
+  sku: string
+  imageUrl: string
+}
+
 interface ProductFormProps {
-  productForm: {
-    nameFr: string
-    nameAr: string
-    descriptionFr: string
-    descriptionAr: string
-    oldPrice: string
-    newPrice: string
-    category: string
-    brand: string
-    model: string
-    year: string
-    fitmentYearsFrom: string
-    fitmentYearsTo: string
-    stock: string
-    sku: string
-    imageUrl: string
-  }
-  setProductForm: React.Dispatch<React.SetStateAction<{
-    nameFr: string
-    nameAr: string
-    descriptionFr: string
-    descriptionAr: string
-    oldPrice: string
-    newPrice: string
-    category: string
-    brand: string
-    model: string
-    year: string
-    fitmentYearsFrom: string
-    fitmentYearsTo: string
-    stock: string
-    sku: string
-    imageUrl: string
-  }>>
+  productForm: ProductFormState
+  setProductForm: React.Dispatch<React.SetStateAction<ProductFormState>>
+  productImages: { url: string; isMain: boolean; file?: File }[]
+  setProductImages: (images: { url: string; isMain: boolean; file?: File }[]) => void
   categories: Category[]
   language: string
   t: (key: any) => string
 }
 
 // Extracted ProductFormFields component to prevent remounting on state changes
-function ProductFormFields({ productForm, setProductForm, categories, language, t }: ProductFormProps) {
+function ProductFormFields({ productForm, setProductForm, productImages, setProductImages, categories, language, t }: ProductFormProps) {
   return (
     <div className="space-y-5 max-h-[60vh] overflow-y-auto pe-2">
       <div className="grid grid-cols-2 gap-4">
@@ -98,12 +87,11 @@ function ProductFormFields({ productForm, setProductForm, categories, language, 
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm font-medium">{language === "fr" ? "URL de l'image" : "رابط الصورة"}</Label>
-        <Input
-          className="h-10 bg-card border-border"
-          placeholder="https://example.com/image.jpg"
-          value={productForm.imageUrl}
-          onChange={e => setProductForm(p => ({ ...p, imageUrl: e.target.value }))}
+        <Label className="text-sm font-medium">{language === "fr" ? "Images du produit" : "صور المنتج"}</Label>
+        <ImageUpload
+          value={productImages}
+          onChange={setProductImages}
+          onRemove={(url) => setProductImages(productImages.filter(img => img.url !== url))}
         />
       </div>
 
@@ -198,11 +186,15 @@ export default function AdminDashboard() {
   const [productSearch, setProductSearch] = useState("")
   const [productCategory, setProductCategory] = useState<string>("all")
 
+  // Multi-image state
+  const [productImages, setProductImages] = useState<{ url: string; isMain: boolean; file?: File }[]>([])
+
   const [productForm, setProductForm] = useState({
     nameFr: "", nameAr: "", descriptionFr: "", descriptionAr: "",
     oldPrice: "", newPrice: "", category: "carrosserie",
     brand: "", model: "", year: "", fitmentYearsFrom: "", fitmentYearsTo: "",
     stock: "", sku: "",
+    // imageUrl kept for compatibility but not used in UI
     imageUrl: "",
   })
 
@@ -315,6 +307,7 @@ export default function AdminDashboard() {
       stock: "", sku: "",
       imageUrl: "",
     })
+    setProductImages([])
   }
 
   const handleEditProduct = (product: Product) => {
@@ -328,6 +321,18 @@ export default function AdminDashboard() {
       stock: String(product.stock), sku: product.sku,
       imageUrl: product.image || "",
     })
+
+    // Convert string array to ImageUpload format
+    // If product.images comes as string[] (from Product interface), map it
+    // If product comes from API with full object, it might function differently, 
+    // but the mapper maps it to string[].
+    const images = product.images.length > 0
+      ? product.images.map((url, i) => ({ url, isMain: url === product.image }))
+      : product.image
+        ? [{ url: product.image, isMain: true }]
+        : []
+
+    setProductImages(images)
   }
 
   const handleSaveProduct = async () => {
@@ -336,6 +341,49 @@ export default function AdminDashboard() {
       if (!categoryObj) {
         toast.error(language === 'fr' ? 'Catégorie introuvable' : 'الفئة غير موجودة')
         return
+      }
+
+      // 1. Upload any new files first
+      let finalImages = [...productImages]
+
+      // Filter images that have a file object (new uploads)
+      const filesToUpload = finalImages.filter(img => img.file)
+
+      if (filesToUpload.length > 0) {
+        toast.loading(language === 'fr' ? 'Téléchargement des images...' : 'جاري تحميل الصور...')
+
+        for (const img of filesToUpload) {
+          try {
+            const formData = new FormData()
+            formData.append('file', img.file!)
+
+            const uploadRes = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData
+            })
+
+            if (!uploadRes.ok) {
+              const error = await uploadRes.json()
+              throw new Error(error.error || 'Upload failed')
+            }
+
+            const data = await uploadRes.json()
+
+            // Update the image URL in our list
+            finalImages = finalImages.map(existing =>
+              existing.url === img.url ? { ...existing, url: data.url, file: undefined } : existing
+            )
+          } catch (err: any) {
+            console.error("Upload failed for file", img.file?.name, err)
+            toast.dismiss()
+            toast.error(language === 'fr'
+              ? `Erreur de téléchargement: ${err.message}`
+              : `خطأ في التحميل: ${err.message}`
+            )
+            return // Stop saving if upload fails
+          }
+        }
+        toast.dismiss()
       }
 
       const payload = {
@@ -353,11 +401,11 @@ export default function AdminDashboard() {
         fitmentYearsFrom: productForm.fitmentYearsFrom ? parseInt(productForm.fitmentYearsFrom) : null,
         fitmentYearsTo: productForm.fitmentYearsTo ? parseInt(productForm.fitmentYearsTo) : null,
         categoryId: categoryObj.id,
-        images: productForm.imageUrl ? [{
-          url: productForm.imageUrl,
-          isMain: true,
-          sortOrder: 0
-        }] : []
+        images: finalImages.map((img, index) => ({
+          url: img.url,
+          isMain: img.isMain,
+          sortOrder: index
+        }))
       }
 
       const url = editingProduct
@@ -599,7 +647,7 @@ export default function AdminDashboard() {
                   </div>
                   <Dialog open={isAddingProduct} onOpenChange={setIsAddingProduct}>
                     <DialogTrigger asChild>
-                      <Button className="bg-primary hover:bg-primary/90 text-primary-foreground h-10 w-full sm:w-auto" onClick={() => { resetProductForm(); setEditingProduct(null); }}>
+                      <Button className="bg-primary hover:bg-primary/90 text-primary-foreground h-10 w-full sm:w-auto" onClick={() => { resetProductForm(); setEditingProduct(null); setProductImages([]); }}>
                         <Plus className="w-4 h-4 me-2" />
                         {t("addProduct")}
                       </Button>
@@ -611,6 +659,8 @@ export default function AdminDashboard() {
                       <ProductFormFields
                         productForm={productForm}
                         setProductForm={setProductForm}
+                        productImages={productImages}
+                        setProductImages={setProductImages}
                         categories={categories}
                         language={language}
                         t={t}
@@ -719,6 +769,8 @@ export default function AdminDashboard() {
                                       <ProductFormFields
                                         productForm={productForm}
                                         setProductForm={setProductForm}
+                                        productImages={productImages}
+                                        setProductImages={setProductImages}
                                         categories={categories}
                                         language={language}
                                         t={t}
