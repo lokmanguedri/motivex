@@ -44,10 +44,22 @@ export default function CategoryPage() {
         setProducts(mappedProducts)
 
         // Extract unique brands and years for filters
-        const uniqueBrands = Array.from(new Set(mappedProducts.map(p => p.brand).filter(Boolean)))
-        const uniqueYears = Array.from(new Set(mappedProducts.map(p => p.year).filter(Boolean)))
-        setBrands(uniqueBrands.sort())
-        setYears(uniqueYears.sort().reverse())
+        const brandsSet = new Set<string>()
+        const yearsSet = new Set<string>()
+
+        mappedProducts.forEach(p => {
+          if (p.brand) {
+            // Normalize brand: trim whitespace and ensure proper casing
+            const normalizedBrand = p.brand.trim()
+            // Capitalize first letter
+            const displayBrand = normalizedBrand.charAt(0).toUpperCase() + normalizedBrand.slice(1)
+            brandsSet.add(displayBrand)
+          }
+          if (p.year) yearsSet.add(p.year)
+        })
+
+        setBrands(Array.from(brandsSet).sort())
+        setYears(Array.from(yearsSet).sort().reverse())
       } catch (error) {
         console.error("Error fetching products:", error)
         setProducts([])
@@ -63,7 +75,12 @@ export default function CategoryPage() {
     let filtered = [...products]
 
     if (brand !== "all") {
-      filtered = filtered.filter(p => p.brand === brand)
+      filtered = filtered.filter(p => {
+        if (!p.brand) return false
+        const normalized = p.brand.trim()
+        const display = normalized.charAt(0).toUpperCase() + normalized.slice(1)
+        return display === brand
+      })
     }
     if (year !== "all") {
       filtered = filtered.filter(p => p.year === year)
