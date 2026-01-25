@@ -67,24 +67,22 @@ export default function CheckoutClient() {
     // Debug helper
     const isDev = process.env.NODE_ENV === 'development'
 
-    // Load Wilayas & Communes on mount
+    // Load Wilayas on mount (Communes loaded dynamically per wilaya)
     useEffect(() => {
-        const loadData = async () => {
+        const loadWilayas = async () => {
             try {
-                const [wRes, cRes] = await Promise.all([
-                    fetch('/api/shipping/wilayas'),
-                    fetch('/api/shipping/communes')
-                ])
-                if (wRes.ok) setWilayas(await wRes.json())
-                if (cRes.ok) setCommunes(await cRes.json())
+                const wRes = await fetch('/api/shipping/wilayas')
+                if (wRes.ok) {
+                    setWilayas(await wRes.json())
+                }
             } catch (err) {
-                console.error("Failed to load shipping data", err)
+                console.error("Failed to load wilayas", err)
                 toast.error("Error loading location data / خطأ في تحميل البيانات")
             } finally {
                 setIsLoadingLocation(false)
             }
         }
-        loadData()
+        loadWilayas()
     }, [])
 
     const calculateFee = async (wilayaId: number, communeId: number | null, isStopDesk: boolean) => {
@@ -108,7 +106,7 @@ export default function CheckoutClient() {
     }
 
     // Filter communes when Wilaya changes
-    const handleWilayaChange = (wilayaIdStr: string) => {
+    const handleWilayaChange = async (wilayaIdStr: string) => {
         const wilayaId = parseInt(wilayaIdStr)
         const selectedWilaya = wilayas.find(w => w.id === wilayaId)
 
@@ -121,8 +119,8 @@ export default function CheckoutClient() {
             communeName: ""
         }))
 
-        // Filter communes based on wilaya AND delivery mode
-        filterCommunesForWilaya(wilayaId, formData.shippingMethod)
+        // Fetch communes for this wilaya
+        await filterCommunesForWilaya(wilayaId, formData.shippingMethod)
 
         // Reset fee
         calculateFee(wilayaId, null, formData.shippingMethod === 'DESK_PICKUP')
@@ -148,7 +146,7 @@ export default function CheckoutClient() {
 
     const handleCommuneChange = (communeIdStr: string) => {
         const communeId = parseInt(communeIdStr)
-        const selectedCommune = communes.find(c => c.id === communeId)
+        const selectedCommune = filteredCommunes.find(c => c.id === communeId)
 
         setFormData(prev => ({
             ...prev,
