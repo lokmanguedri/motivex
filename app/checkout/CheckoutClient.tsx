@@ -161,13 +161,6 @@ export default function CheckoutClient() {
         }
     }
 
-            // HOME delivery: only deliverable communes
-            return c.is_deliverable === 1
-        })
-
-        setFilteredCommunes(filtered)
-        console.log(`Filtered Communes for Wilaya ${wilayaId} (${mode}): ${filtered.length} found`)
-    }
 
     const handleCommuneChange = (communeIdStr: string) => {
         const communeId = parseInt(communeIdStr)
