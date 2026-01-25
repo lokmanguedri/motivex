@@ -121,14 +121,29 @@ export default function CheckoutClient() {
             communeName: ""
         }))
 
-        // Filter communes
-        // Robust comparison
-        const filtered = communes.filter(c => c.wilaya_id == wilayaId)
-        setFilteredCommunes(filtered)
-        console.log(`Filtered Communes for Wilaya ${wilayaId}: ${filtered.length} found`)
+        // Filter communes based on wilaya AND delivery mode
+        filterCommunesForWilaya(wilayaId, formData.shippingMethod)
 
         // Reset fee
         calculateFee(wilayaId, null, formData.shippingMethod === 'DESK_PICKUP')
+    }
+
+    // Helper to filter communes by wilaya and mode
+    const filterCommunesForWilaya = (wilayaId: number, mode: string) => {
+        const filtered = communes.filter(c => {
+            if (c.wilaya_id != wilayaId) return false
+
+            // STOPDESK mode: only communes with stopdesk offices
+            if (mode === 'DESK_PICKUP') {
+                return c.has_stop_desk === 1
+            }
+
+            // HOME delivery: only deliverable communes
+            return c.is_deliverable === 1
+        })
+
+        setFilteredCommunes(filtered)
+        console.log(`Filtered Communes for Wilaya ${wilayaId} (${mode}): ${filtered.length} found`)
     }
 
     const handleCommuneChange = (communeIdStr: string) => {
@@ -149,314 +164,329 @@ export default function CheckoutClient() {
 
     const handleMethodChange = (method: string) => {
         setFormData(prev => ({ ...prev, shippingMethod: method }))
-        // Recalculate if we have location
+
+        // Re-filter communes when mode changes
         if (formData.wilaya) {
+            const wilayaId = parseInt(formData.wilaya)
+            filterCommunesForWilaya(wilayaId, method)
+
+            // Recalculate fee
             const communeId = formData.commune ? parseInt(formData.commune) : null
-            calculateFee(parseInt(formData.wilaya), communeId, method === 'DESK_PICKUP')
+            calculateFee(wilayaId, communeId, method === 'DESK_PICKUP')
+
+            // Reset commune selection as available communes changed
+            setFormData(prev => ({ ...prev, commune: "", communeName: "" }))
+        }
+    }
+    setFormData(prev => ({ ...prev, shippingMethod: method }))
+    // Recalculate if we have location
+    if (formData.wilaya) {
+        const communeId = formData.commune ? parseInt(formData.commune) : null
+        calculateFee(parseInt(formData.wilaya), communeId, method === 'DESK_PICKUP')
+    }
+}
+
+const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+}
+
+// Dynamic Total
+const finalTotal = subtotal + shippingFee
+
+const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!user) {
+        toast.error(language === "fr" ? "Veuillez vous connecter" : "يرجى تسجيل الدخول")
+        router.push("/account")
+        return
+    }
+
+    if (!formData.name || !formData.phone || !formData.address || !formData.wilaya) {
+        toast.error(language === "fr" ? "Veuillez remplir tous les champs" : "يرجى ملء جميع الحقول")
+        return
+    }
+
+    // Validate BaridiMob reference
+    if (formData.paymentMethod === "BARIDIMOB") {
+        if (!formData.baridiMobReference || formData.baridiMobReference.length < 6) {
+            toast.error(language === "fr" ? "Référence de transaction requise (min 6 caractères)" : "مرجع المعاملة مطلوب")
+            return
         }
     }
 
-    const handleChange = (field: string, value: string) => {
-        setFormData(prev => ({ ...prev, [field]: value }))
-    }
+    setIsSubmitting(true)
 
-    // Dynamic Total
-    const finalTotal = subtotal + shippingFee
+    try {
+        const orderItems = items.map(item => ({
+            productId: item.product.id,
+            quantity: item.quantity
+        }))
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-
-        if (!user) {
-            toast.error(language === "fr" ? "Veuillez vous connecter" : "يرجى تسجيل الدخول")
-            router.push("/account")
-            return
-        }
-
-        if (!formData.name || !formData.phone || !formData.address || !formData.wilaya) {
-            toast.error(language === "fr" ? "Veuillez remplir tous les champs" : "يرجى ملء جميع الحقول")
-            return
-        }
-
-        // Validate BaridiMob reference
-        if (formData.paymentMethod === "BARIDIMOB") {
-            if (!formData.baridiMobReference || formData.baridiMobReference.length < 6) {
-                toast.error(language === "fr" ? "Référence de transaction requise (min 6 caractères)" : "مرجع المعاملة مطلوب")
-                return
-            }
-        }
-
-        setIsSubmitting(true)
-
-        try {
-            const orderItems = items.map(item => ({
-                productId: item.product.id,
-                quantity: item.quantity
-            }))
-
-            const response = await fetch('/api/orders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    items: orderItems,
-                    paymentMethod: formData.paymentMethod,
-                    baridiMobReference: formData.paymentMethod === "BARIDIMOB" ? formData.baridiMobReference : undefined,
-                    shippingFullName: formData.name,
-                    shippingPhone: formData.phone,
-                    shippingWilaya: formData.wilayaName,
-                    shippingWilayaCode: formData.wilaya, // Send Code
-                    shippingCommune: formData.communeName || formData.commune, // Use Name if avail, else fallback
-                    shippingCommuneCode: formData.commune, // Send Code
-                    shippingAddress1: formData.address,
-                    shippingNotes: `Mode: ${formData.shippingMethod}`,
-                    shippingMethod: "GUEPEX"
-                })
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                items: orderItems,
+                paymentMethod: formData.paymentMethod,
+                baridiMobReference: formData.paymentMethod === "BARIDIMOB" ? formData.baridiMobReference : undefined,
+                shippingFullName: formData.name,
+                shippingPhone: formData.phone,
+                shippingWilaya: formData.wilayaName,
+                shippingWilayaCode: formData.wilaya, // Send Code
+                shippingCommune: formData.communeName || formData.commune, // Use Name if avail, else fallback
+                shippingCommuneCode: formData.commune, // Send Code
+                shippingAddress1: formData.address,
+                shippingNotes: `Mode: ${formData.shippingMethod}`,
+                shippingMethod: "GUEPEX"
             })
+        })
 
-            const data = await response.json()
+        const data = await response.json()
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to create order')
-            }
-
-            setPaymentCode(data.order.paymentCode)
-            if (data.order.trackingNumber) {
-                setTrackingNumber(data.order.trackingNumber)
-            }
-            setOrderPlaced(true)
-            clearCart()
-
-            toast.success(language === "fr" ? "Commande confirmée !" : "تم تأكيد الطلب!")
-
-        } catch (error: any) {
-            console.error('Order error:', error)
-            toast.error(error.message)
-        } finally {
-            setIsSubmitting(false)
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to create order')
         }
-    }
 
-    if (items.length === 0 && !orderPlaced) {
-        router.push("/cart")
-        return null
-    }
+        setPaymentCode(data.order.paymentCode)
+        if (data.order.trackingNumber) {
+            setTrackingNumber(data.order.trackingNumber)
+        }
+        setOrderPlaced(true)
+        clearCart()
 
-    if (orderPlaced) {
-        return (
-            <div className="min-h-screen flex flex-col bg-background">
-                <Header />
-                <main className="flex-1 flex items-center justify-center py-12">
-                    <Card className="max-w-md w-full mx-4 border-border">
-                        <CardContent className="pt-10 pb-10 text-center">
-                            <div className="mb-4"><MotivexLogo size="md" /></div>
-                            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-accent/10 flex items-center justify-center">
-                                <CheckCircle className="w-8 h-8 text-accent" />
-                            </div>
-                            <h1 className="text-2xl font-bold text-foreground mb-2">{t("orderConfirmed")}</h1>
-                            <p className="text-muted-foreground mb-6">
-                                {language === "fr" ? "Merci pour votre commande!" : "شكراً لطلبك!"}
-                            </p>
-                            <div className="bg-secondary/50 rounded-lg p-4 mb-6">
-                                {trackingNumber ? (
-                                    <>
-                                        <p className="text-sm text-muted-foreground mb-1">
-                                            {language === "fr" ? "Numéro de Suivi (Yalidine)" : "رقم التتبع (Yalidine)"}
-                                        </p>
-                                        <p className="font-mono font-bold text-2xl text-primary mb-2 select-all">
-                                            {trackingNumber}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {language === "fr" ? `Ref Commande: ${paymentCode}` : `مرجع الطلب: ${paymentCode}`}
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-sm text-muted-foreground mb-1">{language === "fr" ? "Code Paiement" : "كود الدفع"}</p>
-                                        <p className="font-mono font-bold text-lg text-foreground">{paymentCode}</p>
-                                        <p className="text-xs text-amber-600 mt-2">
-                                            {language === "fr" ? "Expédition en cours de création..." : "جاري إنشاء الشحنة..."}
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                            {formData.paymentMethod === "BARIDIMOB" && (
-                                <div className="bg-primary/10 rounded-lg p-4 mb-6">
-                                    <p className="text-sm text-foreground">
-                                        {language === "fr"
-                                            ? `⚠️ Important: Code ${paymentCode} motif transfert.`
-                                            : `⚠️ مهم: الكود ${paymentCode} في سبب التحويل.`}
-                                    </p>
-                                </div>
-                            )}
-                            <div className="flex flex-col gap-3">
-                                <Link href="/account"><Button className="w-full">{t("myOrders")}</Button></Link>
-                                <Link href="/"><Button variant="outline" className="w-full">{t("continueShopping")}</Button></Link>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </main>
-                <Footer />
-            </div>
-        )
-    }
+        toast.success(language === "fr" ? "Commande confirmée !" : "تم تأكيد الطلب!")
 
+    } catch (error: any) {
+        console.error('Order error:', error)
+        toast.error(error.message)
+    } finally {
+        setIsSubmitting(false)
+    }
+}
+
+if (items.length === 0 && !orderPlaced) {
+    router.push("/cart")
+    return null
+}
+
+if (orderPlaced) {
     return (
         <div className="min-h-screen flex flex-col bg-background">
             <Header />
-            <main className="flex-1">
-                <div className="container mx-auto px-4 py-8">
-                    {/* Debug Block - Requirement 2 */}
-                    {isDev && (
-                        <div className="mb-4 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded border border-green-800 overflow-auto">
-                            <p><strong>DEBUG SHIPPING:</strong></p>
-                            <p>Wilaya: {formData.wilaya} ({formData.wilayaName})</p>
-                            <p>Commune: {formData.commune} ({formData.communeName})</p>
-                            <p>Provider: YALIDINE/GUEPEX</p>
+            <main className="flex-1 flex items-center justify-center py-12">
+                <Card className="max-w-md w-full mx-4 border-border">
+                    <CardContent className="pt-10 pb-10 text-center">
+                        <div className="mb-4"><MotivexLogo size="md" /></div>
+                        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-accent/10 flex items-center justify-center">
+                            <CheckCircle className="w-8 h-8 text-accent" />
                         </div>
-                    )}
-
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2 space-y-6">
-                                <Card className="border-border">
-                                    <CardHeader className="pb-4"><CardTitle>{t("billingInfo")} {language === 'fr' ? '(Sécurisé par Yalidine)' : '(مؤمن بواسطة Yalidine)'}</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="name">{t("fullName")}</Label>
-                                                <Input id="name" value={formData.name} onChange={(e) => handleChange("name", e.target.value)} required />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="phone">{t("phone")}</Label>
-                                                <Input id="phone" value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} required dir="ltr" />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="address">{t("address")}</Label>
-                                            <Input id="address" value={formData.address} onChange={(e) => handleChange("address", e.target.value)} required />
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>{t("wilaya")}</Label>
-                                                <Select value={formData.wilaya} onValueChange={handleWilayaChange} disabled={isLoadingLocation}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder={isLoadingLocation ? "Loading..." : t("selectWilaya")} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {wilayas.map((w) => (
-                                                            <SelectItem key={w.id} value={w.id.toString()}>
-                                                                {String(w.id).padStart(2, "0")} - {w.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>{language === "fr" ? "Commune" : "البلدية"}</Label>
-                                                <Select value={formData.commune} onValueChange={handleCommuneChange} disabled={!formData.wilaya}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder={language === "fr" ? "Sélectionner Commune" : "اختر البلدية"} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {filteredCommunes.map((c) => (
-                                                            <SelectItem key={c.id} value={c.id.toString()}>
-                                                                {c.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-border">
-                                    <CardHeader className="pb-4"><CardTitle>{language === "fr" ? "Méthode de livraison" : "طريقة التوصيل"}</CardTitle></CardHeader>
-                                    <CardContent className="space-y-3">
-                                        <RadioGroup value={formData.shippingMethod} onValueChange={handleMethodChange} className="space-y-3">
-                                            <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer ${formData.shippingMethod === "HOME_DELIVERY" ? "border-primary bg-primary/5" : "border-border"}`}>
-                                                <RadioGroupItem value="HOME_DELIVERY" id="HOME_DELIVERY" />
-                                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0"><Truck className="w-5 h-5 text-primary" /></div>
-                                                <div className="flex-1"><p className="font-medium">{language === "fr" ? "Livraison à domicile" : "التوصيل إلى المنزل"}</p></div>
-                                            </label>
-                                            <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer ${formData.shippingMethod === "DESK_PICKUP" ? "border-primary bg-primary/5" : "border-border"}`}>
-                                                <RadioGroupItem value="DESK_PICKUP" id="DESK_PICKUP" />
-                                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0"><Truck className="w-5 h-5 text-primary" /></div>
-                                                <div className="flex-1"><p className="font-medium">{language === "fr" ? "Retrait au bureau (Stop Desk)" : "التوصيل إلى المكتب"}</p></div>
-                                            </label>
-                                        </RadioGroup>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader><CardTitle>{t("paymentMethod")}</CardTitle></CardHeader>
-                                    <CardContent>
-                                        <RadioGroup value={formData.paymentMethod} onValueChange={(val) => handleChange("paymentMethod", val)}>
-                                            <label className="flex items-center gap-4 p-4 border rounded-xl mb-2 cursor-pointer">
-                                                <RadioGroupItem value="COD" />
-                                                <Banknote className="w-5 h-5" />
-                                                <span className="font-medium">{t("cashOnDelivery")}</span>
-                                            </label>
-                                            <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer">
-                                                <RadioGroupItem value="BARIDIMOB" />
-                                                <Smartphone className="w-5 h-5" />
-                                                <span className="font-medium">{t("baridimob")}</span>
-                                            </label>
-                                        </RadioGroup>
-                                        {formData.paymentMethod === "BARIDIMOB" && (
-                                            <div className="mt-4">
-                                                <Label>{language === "fr" ? "Référence transaction" : "مرجع المعاملة"}</Label>
-                                                <Input value={formData.baridiMobReference} onChange={(e) => handleChange("baridiMobReference", e.target.value)} required minLength={6} className="mt-2" />
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            <div className="lg:col-span-1">
-                                <Card className="sticky top-24">
-                                    <CardHeader><CardTitle>{t("orderSummary")}</CardTitle></CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-2 mb-4">
-                                            {items.map(item => (
-                                                <div key={item.product.id} className="flex justify-between text-sm">
-                                                    <span>{language === "fr" ? item.product.nameFr : item.product.nameAr} x{item.quantity}</span>
-                                                    <span>{(item.priceAtAdd * item.quantity).toLocaleString()} DZD</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="border-t pt-4 space-y-2">
-                                            <div className="flex justify-between">
-                                                <span>{t("subtotal")}</span>
-                                                <span>{subtotal.toLocaleString()} DZD</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span>{t("shipping")}</span>
-                                                <span className="font-medium">
-                                                    {isCalculatingFee ? <Loader2 className="w-4 h-4 animate-spin" /> : `${shippingFee.toLocaleString()} DZD`}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between text-xl font-bold pt-2 border-t mt-2">
-                                                <span>{t("total")}</span>
-                                                <span>{finalTotal.toLocaleString()} DZD</span>
-                                            </div>
-                                        </div>
-                                        <Button className="w-full mt-6" onClick={handleSubmit} disabled={isSubmitting || isCalculatingFee}>
-                                            {isSubmitting ? <Loader2 className="animate-spin" /> : t("confirmOrder")}
-                                        </Button>
-
-                                        <div className="mt-4 pt-4 border-t space-y-2 text-xs text-muted-foreground">
-                                            <div className="flex gap-2"><Truck className="w-4" /> <span>{language === "fr" ? "Livraison par Yalidine" : "توصيل عبر ياليدين"}</span></div>
-                                            <div className="flex gap-2"><Lock className="w-4" /> <span>{language === "fr" ? "Paiement Sécurisé" : "دفع آمن"}</span></div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                        <h1 className="text-2xl font-bold text-foreground mb-2">{t("orderConfirmed")}</h1>
+                        <p className="text-muted-foreground mb-6">
+                            {language === "fr" ? "Merci pour votre commande!" : "شكراً لطلبك!"}
+                        </p>
+                        <div className="bg-secondary/50 rounded-lg p-4 mb-6">
+                            {trackingNumber ? (
+                                <>
+                                    <p className="text-sm text-muted-foreground mb-1">
+                                        {language === "fr" ? "Numéro de Suivi (Yalidine)" : "رقم التتبع (Yalidine)"}
+                                    </p>
+                                    <p className="font-mono font-bold text-2xl text-primary mb-2 select-all">
+                                        {trackingNumber}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {language === "fr" ? `Ref Commande: ${paymentCode}` : `مرجع الطلب: ${paymentCode}`}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-muted-foreground mb-1">{language === "fr" ? "Code Paiement" : "كود الدفع"}</p>
+                                    <p className="font-mono font-bold text-lg text-foreground">{paymentCode}</p>
+                                    <p className="text-xs text-amber-600 mt-2">
+                                        {language === "fr" ? "Expédition en cours de création..." : "جاري إنشاء الشحنة..."}
+                                    </p>
+                                </>
+                            )}
                         </div>
-                    </form>
-                </div>
+                        {formData.paymentMethod === "BARIDIMOB" && (
+                            <div className="bg-primary/10 rounded-lg p-4 mb-6">
+                                <p className="text-sm text-foreground">
+                                    {language === "fr"
+                                        ? `⚠️ Important: Code ${paymentCode} motif transfert.`
+                                        : `⚠️ مهم: الكود ${paymentCode} في سبب التحويل.`}
+                                </p>
+                            </div>
+                        )}
+                        <div className="flex flex-col gap-3">
+                            <Link href="/account"><Button className="w-full">{t("myOrders")}</Button></Link>
+                            <Link href="/"><Button variant="outline" className="w-full">{t("continueShopping")}</Button></Link>
+                        </div>
+                    </CardContent>
+                </Card>
             </main>
             <Footer />
-        </div >
+        </div>
     )
+}
+
+return (
+    <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1">
+            <div className="container mx-auto px-4 py-8">
+                {/* Debug Block - Requirement 2 */}
+                {isDev && (
+                    <div className="mb-4 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded border border-green-800 overflow-auto">
+                        <p><strong>DEBUG SHIPPING:</strong></p>
+                        <p>Wilaya: {formData.wilaya} ({formData.wilayaName})</p>
+                        <p>Commune: {formData.commune} ({formData.communeName})</p>
+                        <p>Provider: YALIDINE/GUEPEX</p>
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit}>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-6">
+                            <Card className="border-border">
+                                <CardHeader className="pb-4"><CardTitle>{t("billingInfo")} {language === 'fr' ? '(Sécurisé par Yalidine)' : '(مؤمن بواسطة Yalidine)'}</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="name">{t("fullName")}</Label>
+                                            <Input id="name" value={formData.name} onChange={(e) => handleChange("name", e.target.value)} required />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="phone">{t("phone")}</Label>
+                                            <Input id="phone" value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} required dir="ltr" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="address">{t("address")}</Label>
+                                        <Input id="address" value={formData.address} onChange={(e) => handleChange("address", e.target.value)} required />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>{t("wilaya")}</Label>
+                                            <Select value={formData.wilaya} onValueChange={handleWilayaChange} disabled={isLoadingLocation}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder={isLoadingLocation ? "Loading..." : t("selectWilaya")} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {wilayas.map((w) => (
+                                                        <SelectItem key={w.id} value={w.id.toString()}>
+                                                            {String(w.id).padStart(2, "0")} - {w.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>{language === "fr" ? "Commune" : "البلدية"}</Label>
+                                            <Select value={formData.commune} onValueChange={handleCommuneChange} disabled={!formData.wilaya}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder={language === "fr" ? "Sélectionner Commune" : "اختر البلدية"} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {filteredCommunes.map((c) => (
+                                                        <SelectItem key={c.id} value={c.id.toString()}>
+                                                            {c.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-border">
+                                <CardHeader className="pb-4"><CardTitle>{language === "fr" ? "Méthode de livraison" : "طريقة التوصيل"}</CardTitle></CardHeader>
+                                <CardContent className="space-y-3">
+                                    <RadioGroup value={formData.shippingMethod} onValueChange={handleMethodChange} className="space-y-3">
+                                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer ${formData.shippingMethod === "HOME_DELIVERY" ? "border-primary bg-primary/5" : "border-border"}`}>
+                                            <RadioGroupItem value="HOME_DELIVERY" id="HOME_DELIVERY" />
+                                            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0"><Truck className="w-5 h-5 text-primary" /></div>
+                                            <div className="flex-1"><p className="font-medium">{language === "fr" ? "Livraison à domicile" : "التوصيل إلى المنزل"}</p></div>
+                                        </label>
+                                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer ${formData.shippingMethod === "DESK_PICKUP" ? "border-primary bg-primary/5" : "border-border"}`}>
+                                            <RadioGroupItem value="DESK_PICKUP" id="DESK_PICKUP" />
+                                            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0"><Truck className="w-5 h-5 text-primary" /></div>
+                                            <div className="flex-1"><p className="font-medium">{language === "fr" ? "Retrait au bureau (Stop Desk)" : "التوصيل إلى المكتب"}</p></div>
+                                        </label>
+                                    </RadioGroup>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader><CardTitle>{t("paymentMethod")}</CardTitle></CardHeader>
+                                <CardContent>
+                                    <RadioGroup value={formData.paymentMethod} onValueChange={(val) => handleChange("paymentMethod", val)}>
+                                        <label className="flex items-center gap-4 p-4 border rounded-xl mb-2 cursor-pointer">
+                                            <RadioGroupItem value="COD" />
+                                            <Banknote className="w-5 h-5" />
+                                            <span className="font-medium">{t("cashOnDelivery")}</span>
+                                        </label>
+                                        <label className="flex items-center gap-4 p-4 border rounded-xl cursor-pointer">
+                                            <RadioGroupItem value="BARIDIMOB" />
+                                            <Smartphone className="w-5 h-5" />
+                                            <span className="font-medium">{t("baridimob")}</span>
+                                        </label>
+                                    </RadioGroup>
+                                    {formData.paymentMethod === "BARIDIMOB" && (
+                                        <div className="mt-4">
+                                            <Label>{language === "fr" ? "Référence transaction" : "مرجع المعاملة"}</Label>
+                                            <Input value={formData.baridiMobReference} onChange={(e) => handleChange("baridiMobReference", e.target.value)} required minLength={6} className="mt-2" />
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        <div className="lg:col-span-1">
+                            <Card className="sticky top-24">
+                                <CardHeader><CardTitle>{t("orderSummary")}</CardTitle></CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2 mb-4">
+                                        {items.map(item => (
+                                            <div key={item.product.id} className="flex justify-between text-sm">
+                                                <span>{language === "fr" ? item.product.nameFr : item.product.nameAr} x{item.quantity}</span>
+                                                <span>{(item.priceAtAdd * item.quantity).toLocaleString()} DZD</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="border-t pt-4 space-y-2">
+                                        <div className="flex justify-between">
+                                            <span>{t("subtotal")}</span>
+                                            <span>{subtotal.toLocaleString()} DZD</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>{t("shipping")}</span>
+                                            <span className="font-medium">
+                                                {isCalculatingFee ? <Loader2 className="w-4 h-4 animate-spin" /> : `${shippingFee.toLocaleString()} DZD`}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-xl font-bold pt-2 border-t mt-2">
+                                            <span>{t("total")}</span>
+                                            <span>{finalTotal.toLocaleString()} DZD</span>
+                                        </div>
+                                    </div>
+                                    <Button className="w-full mt-6" onClick={handleSubmit} disabled={isSubmitting || isCalculatingFee}>
+                                        {isSubmitting ? <Loader2 className="animate-spin" /> : t("confirmOrder")}
+                                    </Button>
+
+                                    <div className="mt-4 pt-4 border-t space-y-2 text-xs text-muted-foreground">
+                                        <div className="flex gap-2"><Truck className="w-4" /> <span>{language === "fr" ? "Livraison par Yalidine" : "توصيل عبر ياليدين"}</span></div>
+                                        <div className="flex gap-2"><Lock className="w-4" /> <span>{language === "fr" ? "Paiement Sécurisé" : "دفع آمن"}</span></div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </main>
+        <Footer />
+    </div >
+)
 }
