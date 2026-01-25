@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getGuepexWilayas, getGuepexCommunes } from '@/lib/guepex-api'
 
+// Force rebuild: 2026-01-25T01:40:00
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
