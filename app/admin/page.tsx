@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import {
   Package, ShoppingCart, Plus, Pencil, Trash2, ArrowLeft, LogOut, TrendingUp, Clock,
-  Search, Filter, Truck
+  Search, Filter, Truck, RefreshCw
 } from "lucide-react"
 import { MotivexLogo } from "@/components/motivex-logo"
 import { Suspense } from "react"
