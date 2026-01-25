@@ -198,6 +198,19 @@ export default function AdminDashboard() {
     imageUrl: "",
   })
 
+  // Fetch orders logic
+  const fetchOrders = async () => {
+    try {
+      const ordersRes = await fetch('/api/admin/orders', { cache: 'no-store' })
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json()
+        setOrders(ordersData.orders)
+      }
+    } catch (err) {
+      console.error("Failed to fetch orders", err)
+    }
+  }
+
   // Fetch categories and products on mount
   useEffect(() => {
     let isMounted = true
@@ -234,13 +247,7 @@ export default function AdminDashboard() {
         setProducts(mapped)
 
         // Fetch orders
-        const ordersRes = await fetch('/api/admin/orders', { cache: 'no-store' })
-        if (ordersRes.ok) {
-          const ordersData = await ordersRes.json()
-          if (isMounted) {
-            setOrders(ordersData.orders)
-          }
-        }
+        if (isMounted) await fetchOrders()
 
         // Fetch stats
         const statsRes = await fetch('/api/admin/stats', { cache: 'no-store' })
@@ -1098,6 +1105,31 @@ export default function AdminDashboard() {
                                                 >
                                                   <Truck className="w-4 h-4 me-2" />
                                                   {language === "fr" ? "Expédier (Guepex)" : "شحن (Guepex)"}
+                                                </Button>
+                                              )}
+
+                                              {order.trackingNumber && (
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="border-blue-500 text-blue-500 hover:bg-blue-50"
+                                                  onClick={async () => {
+                                                    try {
+                                                      const res = await fetch(`/api/admin/orders/${order.id}/sync`, { method: 'POST' })
+                                                      if (res.ok) {
+                                                        toast.success(language === 'fr' ? 'Statut synchronisé' : 'تم مزامنة الحالة')
+                                                        fetchOrders()
+                                                      } else {
+                                                        const err = await res.json()
+                                                        toast.error(err.error || 'Sync failed')
+                                                      }
+                                                    } catch (e) {
+                                                      toast.error("Sync Error")
+                                                    }
+                                                  }}
+                                                >
+                                                  <RefreshCw className="w-4 h-4 me-1" />
+                                                  {language === "fr" ? "Sync" : "مزامنة"}
                                                 </Button>
                                               )}
                                             </div>

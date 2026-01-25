@@ -165,13 +165,39 @@ export async function calculateGuepexFeeExact(fromWilayaId: number, toWilayaId: 
 }
 
 /**
+ * Get Tracking Info by Tracking Number
+ */
+export async function getTrackingInfo(trackingNumber: string) {
+    try {
+        const response = await fetch(`${API_BASE}/parcels/${trackingNumber}`, {
+            headers: getHeaders(),
+            next: { revalidate: 0 } // No cache for sync
+        })
+
+        if (!response.ok) return null
+
+        const data = await response.json()
+        if (data && data.parcel) {
+            return {
+                status: data.parcel.status, // "Livre", "Retour", etc.
+                rawResponse: data
+            }
+        }
+        return null
+    } catch (error) {
+        console.error("Get Tracking Error:", error)
+        return null
+    }
+}
+
+/**
  * Create a shipment in Guepex
  */
 export async function createGuepexShipment(data: GuepexShipmentData) {
     try {
         const isStopDesk = data.shippingMethod === 'DESK_PICKUP'
 
-        // Construct payload based on user provided docs
+        // Construct payload based on strict requirements: USE NAMES
         const parcel = {
             order_id: data.orderNumber,
             firstname: data.fullName.split(' ')[0],
@@ -179,8 +205,8 @@ export async function createGuepexShipment(data: GuepexShipmentData) {
             contact_phone: data.phone,
             address: data.address,
             from_wilaya_name: "Alger",
-            to_wilaya_name: data.wilaya,
-            to_commune_name: data.commune,
+            to_wilaya_name: data.wilaya, // User confirmed this comes as Name now
+            to_commune_name: data.commune, // User confirmed this comes as Name now
             product_list: data.items.map(i => `${i.name} x${i.quantity}`).join(', '),
             price: data.totalAmount,
             declared_value: data.totalAmount,
@@ -194,6 +220,8 @@ export async function createGuepexShipment(data: GuepexShipmentData) {
             weight: 1,
             has_exchange: false
         }
+
+        console.log("Creating Guepex Payload:", JSON.stringify([parcel]))
 
         const payload = [parcel] // Payload is array of parcels (not array of array of parcels based on some docs, but array of objects)
         // Check API docs: Usually `POST /parcels` accepts `[{...}]`

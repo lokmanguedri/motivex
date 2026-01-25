@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
 
         const payload = JSON.parse(body)
 
+        // Log Full Payload (Requirement)
+        console.log("Guepex Webhook Payload:", JSON.stringify(payload))
+
         // 1. Check for 'events' array (parcel_status_updated)
         // Payload format: { type: 'parcel_status_updated', events: [ { data: { ... } } ] }
         if (payload.events && Array.isArray(payload.events)) {
@@ -81,6 +84,9 @@ export async function POST(request: NextRequest) {
                             } as any
                         })
                         console.log(`Updated Order ${order.paymentCode} [${trackingId}]: ${shippingStatus} / ${orderStatus}`)
+                    } else {
+                        // Log Warning (Requirement)
+                        console.warn(`WEBHOOK WARNING: Tracking ID ${trackingId} not found in database. Payload:`, JSON.stringify(event))
                     }
                 }
             }
