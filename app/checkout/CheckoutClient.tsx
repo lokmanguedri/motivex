@@ -100,8 +100,10 @@ export default function CheckoutClient() {
         }))
 
         // Filter communes
-        const filtered = communes.filter(c => c.wilaya_id === wilayaId)
+        // Ensure robust comparison (API might return strings or numbers)
+        const filtered = communes.filter(c => c.wilaya_id == wilayaId)
         setFilteredCommunes(filtered)
+        console.log(`Filtered Communes for Wilaya ${wilayaId}: ${filtered.length} found`)
 
         // Reset fee to default estimate (or recalulcate based on Wilaya only)
         calculateFee(wilayaId, null, formData.shippingMethod === 'DESK_PICKUP')
@@ -309,7 +311,7 @@ export default function CheckoutClient() {
                             {/* Billing Info */}
                             <div className="lg:col-span-2 space-y-6">
                                 <Card className="border-border">
-                                    <CardHeader className="pb-4"><CardTitle>{t("billingInfo")}</CardTitle></CardHeader>
+                                    <CardHeader className="pb-4"><CardTitle>{t("billingInfo")} {language === 'fr' ? '(Sécurisé par Yalidine)' : '(مؤمن بواسطة Yalidine)'}</CardTitle></CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="space-y-2">
