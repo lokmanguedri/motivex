@@ -41,25 +41,23 @@ export async function POST(request: NextRequest) {
                 const providerStatus = data.status || 'UNKNOWN'
 
                 if (providerStatus) {
-                    const internalStatus = mapGuepexStatus(providerStatus)
+                    const { shippingStatus, orderStatus } = mapGuepexStatus(providerStatus)
 
                     // Update DB
                     // Only update if we find the order
                     const order = await prisma.order.findFirst({
-                        where: { shippingTrackingId: trackingId }
+                        where: {
+                            OR: [
+                                { trackingNumber: trackingId },
+                                { shippingTrackingId: trackingId }
+                            ]
+                        }
                     })
 
                     if (order) {
-                        // Don't revert generic 'SHIPPED' to 'PENDING' if api sends weird updates?
-                        // Trust the mapping:
-
                         // Special case: payment updated
                         let paymentUpdate = {}
                         if (payload.type === 'parcel_payment_updated') {
-                            // If payment is 'receivable' or similar -> potentially update payment status?
-                            // user requirement: "Revenue stats count DELIVERED + PAID"
-                            // If status is 'receivable' -> maybe mark as paid?
-                            // data.status == 'receivable'
                             if (data.status === 'receivable') {
                                 paymentUpdate = {
                                     payment: {
@@ -74,15 +72,15 @@ export async function POST(request: NextRequest) {
                         await prisma.order.update({
                             where: { id: order.id },
                             data: {
-                                shippingStatus: providerStatus, // The raw French string
+                                shippingStatus: shippingStatus, // Granular
                                 shippingRawStatus: providerStatus,
                                 shippingLastSync: new Date(),
-                                // Only update main status if meaningful change
-                                ...(internalStatus !== 'PENDING' ? { status: internalStatus as any } : {}),
+                                // Update main status
+                                status: orderStatus as any,
                                 ...paymentUpdate
-                            }
+                            } as any
                         })
-                        console.log(`Updated Order ${order.paymentCode} [${trackingId}]: ${providerStatus}`)
+                        console.log(`Updated Order ${order.paymentCode} [${trackingId}]: ${shippingStatus} / ${orderStatus}`)
                     }
                 }
             }

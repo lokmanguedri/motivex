@@ -41,7 +41,7 @@ export async function POST(
             address: order.shippingAddress1,
             wilaya: order.shippingWilaya,
             commune: order.shippingCommune,
-            orderNumber: order.id,
+            orderNumber: order.paymentCode, // Match frontend logic
             items: order.items.map(item => ({
                 name: item.snapshotNameFr,
                 quantity: item.quantity,
@@ -58,12 +58,15 @@ export async function POST(
         await prisma.order.update({
             where: { id: params.id },
             data: {
-                shippingTrackingId: result.trackingId,
+                trackingNumber: result.trackingId, // New field
+                shippingTrackingId: result.trackingId, // Legacy support
                 shippingLabel: result.label,
-                shippingStatus: result.status,
-                status: 'SHIPPED',
-                shippingProvider: 'GUEPEX',
-                shippingLastSync: new Date()
+                shippingStatus: "SHIPPING_CREATED", // Mapped internal status
+                shippingRawStatus: result.status,
+                status: 'SHIPPED', // Or keep PENDING until verified? User likely wants SHIPPED if label created.
+                shippingProvider: 'YALIDINE', // Requirements say UI should show YALIDINE
+                shippingLastSync: new Date(),
+                shippingMeta: result.rawResponse ? result.rawResponse : undefined
             }
         })
 

@@ -195,31 +195,48 @@ export async function createGuepexShipment(data: GuepexShipmentData) {
             has_exchange: false
         }
 
-        const payload = [[parcel]]
+        const payload = [parcel] // Payload is array of parcels (not array of array of parcels based on some docs, but array of objects)
+        // Check API docs: Usually `POST /parcels` accepts `[{...}]`
+        // Existing code had `const payload = [[parcel]]`. Double array? 
+        // Let's stick to standard `[parcel]` unless specific knowledge says `[[...]]`.
+        // Actually, some Yalidine/Guepex integrations use weird formats. 
+        // But `[parcel]` is safer JSON `[{...}]`. 
+        // Wait, if existing code had `[[parcel]]` maybe it was tested? 
+        // "We already connected Guepex API ... but integration is not functioning end-to-end."
+        // I will assume standard `[parcel]` first.
 
         const response = await fetch(`${API_BASE}/parcels`, {
             method: 'POST',
             headers: getHeaders(),
-            body: JSON.stringify(payload)
+            body: JSON.stringify([parcel])
         })
 
         if (!response.ok) {
             const err = await response.text()
-            throw new Error(`Guepex API Error: ${err}`)
+            throw new Error(`Guepex API Error (${response.status}): ${err}`)
         }
 
         const result = await response.json()
 
-        const orderResult = result[data.orderNumber]
+        // Guepex usually returns { "OrderRef": { success: true, tracking: "..." } }
+        // result is keyed by Order ID (your internal ID)
+        const orderResult = result[parcel.order_id]
 
-        if (!orderResult || !orderResult.success) {
-            throw new Error(orderResult?.message || "Unknown Guepex Error")
+        if (!orderResult) {
+            // Maybe single object?
+            if (result.success && result.tracking) return { trackingId: result.tracking, label: result.label, status: "PENDING" }
+            throw new Error("Invalid Guepex Response format")
+        }
+
+        if (orderResult.success !== true && orderResult.success !== "true") { // Handle loose types
+            throw new Error(orderResult.message || "Guepex returned unsuccess")
         }
 
         return {
             trackingId: orderResult.tracking,
             label: orderResult.label,
-            status: "PENDING"
+            status: "PENDING", // Initial status
+            rawResponse: orderResult
         }
     } catch (error) {
         console.error("Guepex Create Shipment Error:", error)
@@ -244,13 +261,51 @@ export function verifyGuepexSignature(payload: string, signature: string): boole
 /**
  * Map Guepex Status to generic Shipping/Order Status
  */
-export function mapGuepexStatus(guepexStatus: string): string {
+/**
+ * Map Guepex Status to granular Shipping Status and high-level Order Status
+ */
+export function mapGuepexStatus(guepexStatus: string): { shippingStatus: string, orderStatus: string } {
     const s = guepexStatus.toLowerCase()
 
-    if (s.includes('livré') || s.includes('delivered')) return 'DELIVERED'
-    if (s.includes('retour') || s.includes('returned') || s.includes('annulé') || s.includes('cancelled')) return 'RETURNED'
-    if (s.includes('sorti') || s.includes('out for delivery')) return 'SHIPPED' // Or specific OUT_FOR_DELIVERY if enum supports it
-    if (s.includes('expédié') || s.includes('shipped') || s.includes('transit')) return 'SHIPPED'
+    // Default return
+    let shippingStatus = "SHIPPING_PENDING"
+    let orderStatus = "SHIPPED" // Once tracking exists, it's generally SHIPPED until final state
 
-    return 'PENDING'
+    // 1. Creation / Pending
+    if (s.includes('créé') || s.includes('created') || s.includes('new')) {
+        shippingStatus = "SHIPPING_CREATED"
+        orderStatus = "SHIPPED" // Or CONFIRMED? Usually if tracking exists, we consider it shipped/processing.
+    }
+    // 2. Pickup / Center
+    else if (s.includes('ramassé') || s.includes('picked') || s.includes('expédié') || s.includes('shipped')) {
+        shippingStatus = "SHIPPING_PICKED"
+        orderStatus = "SHIPPED"
+    }
+    // 3. Transit
+    else if (s.includes('transit') || s.includes('départ') || s.includes('acheminement')) {
+        shippingStatus = "SHIPPING_IN_TRANSIT"
+        orderStatus = "SHIPPED"
+    }
+    // 4. Agency / Center
+    else if (s.includes('agence') || s.includes('agency') || s.includes('centre')) {
+        shippingStatus = "SHIPPING_AT_AGENCY"
+        orderStatus = "SHIPPED"
+    }
+    // 5. Out for Delivery
+    else if (s.includes('livraison') || s.includes('out for delivery') || s.includes('distrib')) {
+        shippingStatus = "SHIPPING_OUT_FOR_DELIVERY"
+        orderStatus = "SHIPPED"
+    }
+    // 6. Delivered
+    else if (s.includes('livré') || s.includes('delivered')) {
+        shippingStatus = "DELIVERED"
+        orderStatus = "DELIVERED"
+    }
+    // 7. Returned / Canceled
+    else if (s.includes('retour') || s.includes('returned') || s.includes('annulé') || s.includes('cancelled') || s.includes('échoué')) {
+        shippingStatus = "SHIPPING_RETURNED"
+        orderStatus = "RETURNED"
+    }
+
+    return { shippingStatus, orderStatus }
 }

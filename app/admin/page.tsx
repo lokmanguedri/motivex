@@ -875,6 +875,7 @@ export default function AdminDashboard() {
                               <TableHead className="font-medium">{language === "fr" ? "Total" : "المجموع"}</TableHead>
                               <TableHead className="font-medium hidden lg:table-cell">{language === "fr" ? "Paiement" : "الدفع"}</TableHead>
                               <TableHead className="font-medium hidden xl:table-cell">{language === "fr" ? "Code" : "الكود"}</TableHead>
+                              <TableHead className="font-medium">{language === "fr" ? "Expédition" : "الشحن"}</TableHead>
                               <TableHead className="font-medium">{language === "fr" ? "Statut" : "الحالة"}</TableHead>
                               <TableHead className="font-medium text-end">{t("actions")}</TableHead>
                             </TableRow>
@@ -915,6 +916,21 @@ export default function AdminDashboard() {
                                 </TableCell>
                                 <TableCell className="hidden xl:table-cell font-mono text-xs text-muted-foreground">
                                   {order.paymentCode}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-xs font-bold text-foreground">YALIDINE</span>
+                                    {order.trackingNumber ? (
+                                      <>
+                                        <span className="text-[10px] font-mono select-all bg-secondary px-1 rounded">{order.trackingNumber}</span>
+                                        <div className="flex gap-2 text-[10px]">
+                                          {order.shippingStatus && <span className="font-medium truncate max-w-[80px]">{order.shippingStatus}</span>}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <span className="text-[10px] text-muted-foreground">-</span>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <span className={`px-2 py-1 rounded-md text-xs font-medium ${order.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-700' :
@@ -1089,7 +1105,17 @@ export default function AdminDashboard() {
                                                 {order.shippingTrackingId && (
                                                   <div>
                                                     <Label className="text-xs text-muted-foreground">{language === "fr" ? "Tracking ID" : "رقم التتبع"}</Label>
-                                                    <p className="text-sm font-mono font-medium">{order.shippingTrackingId}</p>
+                                                    <div className="flex items-center gap-2">
+                                                      <p className="text-sm font-mono font-medium">{order.trackingNumber || order.shippingTrackingId}</p>
+                                                      <a
+                                                        href={`https://ec.yalidine.com/tracking/${order.trackingNumber || order.shippingTrackingId}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded hover:bg-primary/20"
+                                                      >
+                                                        {language === "fr" ? "Suivre" : "تتبع"}
+                                                      </a>
+                                                    </div>
                                                   </div>
                                                 )}
                                                 {order.shippingLabel && (

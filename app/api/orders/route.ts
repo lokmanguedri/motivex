@@ -295,13 +295,75 @@ export async function POST(request: NextRequest) {
 
 
 
+        // 4. Create Shipment in Guepex (Async, don't block response too long but we want to return tracking if possible)
+        // Since user wants "trackingNumber to frontend immediately", we must wait for it.
+        // If it fails, we still return success structure but with pending shipping status.
+
+        let trackingNumber = null
+        let shippingStatus = "SHIPPING_PENDING"
+
+        if (PROVIDER === 'GUEPEX') {
+            try {
+                const { createGuepexShipment } = await import('@/lib/guepex-api')
+
+                // Prepare shipment data
+                const shipmentData = {
+                    fullName: shippingFullName,
+                    phone: phoneValidationResult.normalized!,
+                    address: shippingAddress1,
+                    wilaya: shippingWilaya, // Name
+                    commune: shippingCommune, // Name
+                    orderNumber: paymentCode,
+                    items: orderItemsData.map((i: any) => ({
+                        name: i.snapshotNameFr,
+                        quantity: i.quantity,
+                        price: Number(i.snapshotPrice)
+                    })),
+                    totalAmount: total,
+                    notes: shippingNotes || "",
+                    shippingMethod: shippingMethod === "DESK_PICKUP" ? "DESK_PICKUP" : "HOME_DELIVERY"
+                }
+
+                const shipment = await createGuepexShipment(shipmentData)
+
+                trackingNumber = shipment.trackingId
+                shippingStatus = "SHIPPING_CREATED" // Internal status mapped to Guepex 'PENDING'/'CREATED'
+
+                // Update Order with Tracking Info
+                await prisma.order.update({
+                    where: { id: order.id },
+                    data: {
+                        trackingNumber: shipment.trackingId,
+                        shippingStatus: shippingStatus,
+                        shippingRawStatus: shipment.status, // "PENDING" usually
+                        shippingLabel: shipment.label,
+                        // Store full response in meta if needed
+                        shippingMeta: shipment.rawResponse ? shipment.rawResponse : undefined
+                    }
+                })
+
+            } catch (shipError: any) {
+                console.error("Failed to create Guepex shipment:", shipError)
+                // We do NOT fail the order. We just log it.
+                // Status remains PENDING (default) or set to SHIPPING_PENDING explicitly
+                await prisma.order.update({
+                    where: { id: order.id },
+                    data: {
+                        shippingStatus: "SHIPPING_PENDING",
+                        shippingMeta: { error: shipError.message }
+                    }
+                })
+            }
+        }
+
         return NextResponse.json({
             order: {
                 id: order.id,
                 paymentCode: order.paymentCode,
                 status: order.status,
                 total: order.total,
-                createdAt: order.createdAt
+                createdAt: order.createdAt,
+                trackingNumber: trackingNumber // Return to frontend
             },
             payment: {
                 method: order.payment?.method,
