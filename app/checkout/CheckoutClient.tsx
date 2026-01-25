@@ -64,6 +64,7 @@ export default function CheckoutClient() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [orderPlaced, setOrderPlaced] = useState(false)
     const [paymentCode, setPaymentCode] = useState("")
+    const [trackingNumber, setTrackingNumber] = useState("") // State for Tracking Number
 
     // Load Wilayas & Communes on mount
     useEffect(() => {
@@ -215,6 +216,9 @@ export default function CheckoutClient() {
             }
 
             setPaymentCode(data.order.paymentCode)
+            if (data.order.trackingNumber) {
+                setTrackingNumber(data.order.trackingNumber) // Save tracking number
+            }
             setOrderPlaced(true)
             clearCart()
 
@@ -250,9 +254,27 @@ export default function CheckoutClient() {
                                 {language === "fr" ? "Merci pour votre commande!" : "شكراً لطلبك!"}
                             </p>
                             <div className="bg-secondary/50 rounded-lg p-4 mb-6">
-                                <p className="text-sm text-muted-foreground mb-1">{language === "fr" ? "Code Paiement" : "كود الدفع"}</p>
-                                <p className="font-mono font-bold text-lg text-foreground">{paymentCode}</p>
-                                {/* Display Tracking if available? We only have paymentCode here. Tracking ID is on Order History or Admin. */}
+                                {trackingNumber ? (
+                                    <>
+                                        <p className="text-sm text-muted-foreground mb-1">
+                                            {language === "fr" ? "Numéro de Suivi (Yalidine)" : "رقم التتبع (Yalidine)"}
+                                        </p>
+                                        <p className="font-mono font-bold text-2xl text-primary mb-2 select-all">
+                                            {trackingNumber}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {language === "fr" ? `Ref Commande: ${paymentCode}` : `مرجع الطلب: ${paymentCode}`}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-sm text-muted-foreground mb-1">{language === "fr" ? "Code Paiement" : "كود الدفع"}</p>
+                                        <p className="font-mono font-bold text-lg text-foreground">{paymentCode}</p>
+                                        <p className="text-xs text-amber-600 mt-2">
+                                            {language === "fr" ? "Expédition en cours de création..." : "جاري إنشاء الشحنة..."}
+                                        </p>
+                                    </>
+                                )}
                             </div>
                             {/* BaridiMob Instructions... */}
                             {formData.paymentMethod === "BARIDIMOB" && (
