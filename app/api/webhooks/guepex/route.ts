@@ -50,10 +50,7 @@ export async function POST(request: NextRequest) {
                     // Only update if we find the order
                     const order = await prisma.order.findFirst({
                         where: {
-                            OR: [
-                                { trackingNumber: trackingId },
-                                { shippingTrackingId: trackingId }
-                            ]
+                            shippingTrackingId: trackingId
                         }
                     })
 
