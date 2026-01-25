@@ -1,15 +1,13 @@
-import { NextResponse } from 'next/server'
-import { getGuepexWilayas } from '@/lib/guepex-api'
+import { NextRequest, NextResponse } from 'next/server'
+import { ALGERIA_WILAYAS } from '@/lib/algeria-data'
 
-export const revalidate = 86400 // Cache API response for 24h
+export const revalidate = 86400 // Cache for 24h
 
 export async function GET() {
     try {
-        const wilayas = await getGuepexWilayas()
-
-        // Ensure standard format for frontend
-        return NextResponse.json(wilayas)
+        return NextResponse.json(ALGERIA_WILAYAS)
     } catch (error) {
+        console.error("Wilayas Error:", error)
         return NextResponse.json(
             { error: "Failed to fetch wilayas" },
             { status: 500 }

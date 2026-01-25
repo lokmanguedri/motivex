@@ -160,13 +160,13 @@ export default function CheckoutClient() {
         }
     }
 
-    const handleMethodChange = (method: string) => {
+    const handleMethodChange = async (method: string) => {
         setFormData(prev => ({ ...prev, shippingMethod: method }))
 
         // Re-filter communes when mode changes
         if (formData.wilaya) {
             const wilayaId = parseInt(formData.wilaya)
-            filterCommunesForWilaya(wilayaId, method)
+            await filterCommunesForWilaya(wilayaId, method)
 
             // Recalculate fee
             const communeId = formData.commune ? parseInt(formData.commune) : null
