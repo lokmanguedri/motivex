@@ -111,6 +111,15 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // STRICT VALIDATION (Requirement 1): Names must be strings and present
+        if (typeof shippingWilaya !== 'string' || !shippingWilaya.trim() ||
+            typeof shippingCommune !== 'string' || !shippingCommune.trim()) {
+            return NextResponse.json(
+                { error: "Invalid location data: Wilaya and Commune Names are required" },
+                { status: 400 }
+            )
+        }
+
         // VALIDATION: Algerian phone number
         // We perform this check here so we can return early.
         // We will reuse the result or re-validate if needed, but reusing result variable name might need care for scope.

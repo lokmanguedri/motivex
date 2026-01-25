@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
                                 shippingStatus: shippingStatus, // Granular
                                 shippingRawStatus: providerStatus,
                                 shippingLastSync: new Date(),
+                                // Audit Trace (Requirement 5)
+                                lastWebhookAt: new Date(),
+                                lastWebhookPayload: payload as any,
                                 // Update main status
                                 status: orderStatus as any,
                                 ...paymentUpdate

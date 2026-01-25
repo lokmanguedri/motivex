@@ -262,12 +262,15 @@ export async function createGuepexShipment(data: GuepexShipmentData) {
 
         return {
             trackingId: orderResult.tracking,
+            trackingNumber: orderResult.tracking, // Normalized alias
             label: orderResult.label,
-            status: "PENDING", // Initial status
+            status: "PENDING",
+            providerStatus: "PENDING", // Normalized
             rawResponse: orderResult
         }
-    } catch (error) {
-        console.error("Guepex Create Shipment Error:", error)
+    } catch (error: any) {
+        console.error("Guepex Create Shipment Failed. Error:", error.message)
+        // Check if we have response body in error object if custom error thrown
         throw error
     }
 }

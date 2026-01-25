@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useEffect } from "react"
-import { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Header } from "@/components/header"
@@ -9,7 +8,6 @@ import { Footer } from "@/components/footer"
 import { useLanguage } from "@/contexts/language-context"
 import { useCart } from "@/contexts/cart-context"
 import { useAuth } from "@/contexts/auth-context"
-// import { wilayas } from "@/lib/data" // Removed in favor of API
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { toast } from "sonner"
-import { Banknote, Smartphone, CheckCircle, ChevronRight, Truck, Shield, Lock, Loader2 } from "lucide-react"
+import { Banknote, Smartphone, CheckCircle, Truck, Lock, Loader2 } from "lucide-react"
 import { MotivexLogo } from "@/components/motivex-logo"
 
 interface Wilaya {
@@ -64,7 +62,10 @@ export default function CheckoutClient() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [orderPlaced, setOrderPlaced] = useState(false)
     const [paymentCode, setPaymentCode] = useState("")
-    const [trackingNumber, setTrackingNumber] = useState("") // State for Tracking Number
+    const [trackingNumber, setTrackingNumber] = useState("")
+
+    // Debug helper
+    const isDev = process.env.NODE_ENV === 'development'
 
     // Load Wilayas & Communes on mount
     useEffect(() => {
@@ -86,11 +87,32 @@ export default function CheckoutClient() {
         loadData()
     }, [])
 
+    const calculateFee = async (wilayaId: number, communeId: number | null, isStopDesk: boolean) => {
+        setIsCalculatingFee(true)
+        try {
+            const params = new URLSearchParams()
+            params.append('wilaya_id', wilayaId.toString())
+            params.append('is_stop_desk', isStopDesk.toString())
+            if (communeId) params.append('commune_id', communeId.toString())
+
+            const res = await fetch(`/api/shipping/fee?${params.toString()}`)
+            if (res.ok) {
+                const data = await res.json()
+                setShippingFee(data.fee)
+            }
+        } catch (err) {
+            console.error("Fee calc error", err)
+        } finally {
+            setIsCalculatingFee(false)
+        }
+    }
+
     // Filter communes when Wilaya changes
     const handleWilayaChange = (wilayaIdStr: string) => {
         const wilayaId = parseInt(wilayaIdStr)
         const selectedWilaya = wilayas.find(w => w.id === wilayaId)
 
+        // Reset commune when wilaya changes
         setFormData(prev => ({
             ...prev,
             wilaya: wilayaIdStr,
@@ -100,12 +122,12 @@ export default function CheckoutClient() {
         }))
 
         // Filter communes
-        // Ensure robust comparison (API might return strings or numbers)
+        // Robust comparison
         const filtered = communes.filter(c => c.wilaya_id == wilayaId)
         setFilteredCommunes(filtered)
         console.log(`Filtered Communes for Wilaya ${wilayaId}: ${filtered.length} found`)
 
-        // Reset fee to default estimate (or recalulcate based on Wilaya only)
+        // Reset fee
         calculateFee(wilayaId, null, formData.shippingMethod === 'DESK_PICKUP')
     }
 
@@ -134,33 +156,12 @@ export default function CheckoutClient() {
         }
     }
 
-    const calculateFee = async (wilayaId: number, communeId: number | null, isStopDesk: boolean) => {
-        setIsCalculatingFee(true)
-        try {
-            const params = new URLSearchParams()
-            params.append('wilaya_id', wilayaId.toString())
-            params.append('is_stop_desk', isStopDesk.toString())
-            if (communeId) params.append('commune_id', communeId.toString())
-
-            const res = await fetch(`/api/shipping/fee?${params.toString()}`)
-            if (res.ok) {
-                const data = await res.json()
-                setShippingFee(data.fee)
-            }
-        } catch (err) {
-            console.error("Fee calc error", err)
-        } finally {
-            setIsCalculatingFee(false)
-        }
-    }
-
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
     // Dynamic Total
     const finalTotal = subtotal + shippingFee
-    const totalDiscount = items.reduce((sum, item) => sum + (item.product.oldPrice - item.priceAtAdd) * item.quantity, 0)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -203,10 +204,10 @@ export default function CheckoutClient() {
                     shippingPhone: formData.phone,
                     shippingWilaya: formData.wilayaName,
                     shippingWilayaCode: formData.wilaya, // Send Code
-                    shippingCommune: formData.communeName || formData.commune, // Fallback
+                    shippingCommune: formData.communeName || formData.commune, // Use Name if avail, else fallback
                     shippingCommuneCode: formData.commune, // Send Code
                     shippingAddress1: formData.address,
-                    shippingNotes: `Mode: ${formData.shippingMethod}`, // Save Delivery Mode (HOME_DELIVERY / DESK_PICKUP)
+                    shippingNotes: `Mode: ${formData.shippingMethod}`,
                     shippingMethod: "GUEPEX"
                 })
             })
@@ -219,7 +220,7 @@ export default function CheckoutClient() {
 
             setPaymentCode(data.order.paymentCode)
             if (data.order.trackingNumber) {
-                setTrackingNumber(data.order.trackingNumber) // Save tracking number
+                setTrackingNumber(data.order.trackingNumber)
             }
             setOrderPlaced(true)
             clearCart()
@@ -244,7 +245,6 @@ export default function CheckoutClient() {
             <div className="min-h-screen flex flex-col bg-background">
                 <Header />
                 <main className="flex-1 flex items-center justify-center py-12">
-                    {/* Same Success UI as before, just kept standard */}
                     <Card className="max-w-md w-full mx-4 border-border">
                         <CardContent className="pt-10 pb-10 text-center">
                             <div className="mb-4"><MotivexLogo size="md" /></div>
@@ -278,7 +278,6 @@ export default function CheckoutClient() {
                                     </>
                                 )}
                             </div>
-                            {/* BaridiMob Instructions... */}
                             {formData.paymentMethod === "BARIDIMOB" && (
                                 <div className="bg-primary/10 rounded-lg p-4 mb-6">
                                     <p className="text-sm text-foreground">
@@ -304,11 +303,19 @@ export default function CheckoutClient() {
         <div className="min-h-screen flex flex-col bg-background">
             <Header />
             <main className="flex-1">
-                {/* Breadcrumb ... (omitted for brevity, keep layout structure) */}
                 <div className="container mx-auto px-4 py-8">
+                    {/* Debug Block - Requirement 2 */}
+                    {isDev && (
+                        <div className="mb-4 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded border border-green-800 overflow-auto">
+                            <p><strong>DEBUG SHIPPING:</strong></p>
+                            <p>Wilaya: {formData.wilaya} ({formData.wilayaName})</p>
+                            <p>Commune: {formData.commune} ({formData.communeName})</p>
+                            <p>Provider: YALIDINE/GUEPEX</p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleSubmit}>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Billing Info */}
                             <div className="lg:col-span-2 space-y-6">
                                 <Card className="border-border">
                                     <CardHeader className="pb-4"><CardTitle>{t("billingInfo")} {language === 'fr' ? '(Sécurisé par Yalidine)' : '(مؤمن بواسطة Yalidine)'}</CardTitle></CardHeader>
@@ -328,7 +335,6 @@ export default function CheckoutClient() {
                                             <Input id="address" value={formData.address} onChange={(e) => handleChange("address", e.target.value)} required />
                                         </div>
 
-                                        {/* Dynamic Locations */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label>{t("wilaya")}</Label>
@@ -346,9 +352,7 @@ export default function CheckoutClient() {
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label>
-                                                    {language === "fr" ? "Commune" : "البلدية"}
-                                                </Label>
+                                                <Label>{language === "fr" ? "Commune" : "البلدية"}</Label>
                                                 <Select value={formData.commune} onValueChange={handleCommuneChange} disabled={!formData.wilaya}>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder={language === "fr" ? "Sélectionner Commune" : "اختر البلدية"} />
@@ -384,7 +388,6 @@ export default function CheckoutClient() {
                                     </CardContent>
                                 </Card>
 
-                                {/* Payment Method (Same as before) -- Consensed here */}
                                 <Card>
                                     <CardHeader><CardTitle>{t("paymentMethod")}</CardTitle></CardHeader>
                                     <CardContent>
@@ -410,12 +413,10 @@ export default function CheckoutClient() {
                                 </Card>
                             </div>
 
-                            {/* Order Summary */}
                             <div className="lg:col-span-1">
                                 <Card className="sticky top-24">
                                     <CardHeader><CardTitle>{t("orderSummary")}</CardTitle></CardHeader>
                                     <CardContent>
-                                        {/* Items List (Simplified) */}
                                         <div className="space-y-2 mb-4">
                                             {items.map(item => (
                                                 <div key={item.product.id} className="flex justify-between text-sm">
@@ -444,7 +445,6 @@ export default function CheckoutClient() {
                                             {isSubmitting ? <Loader2 className="animate-spin" /> : t("confirmOrder")}
                                         </Button>
 
-                                        {/* Badges */}
                                         <div className="mt-4 pt-4 border-t space-y-2 text-xs text-muted-foreground">
                                             <div className="flex gap-2"><Truck className="w-4" /> <span>{language === "fr" ? "Livraison par Yalidine" : "توصيل عبر ياليدين"}</span></div>
                                             <div className="flex gap-2"><Lock className="w-4" /> <span>{language === "fr" ? "Paiement Sécurisé" : "دفع آمن"}</span></div>
@@ -457,6 +457,6 @@ export default function CheckoutClient() {
                 </div>
             </main>
             <Footer />
-        </div>
+        </div >
     )
 }

@@ -159,6 +159,8 @@ model Order {
   shippingRawStatus  String?   @map("shipping_raw_status") // Exact status from provider
   shippingLastSync   DateTime? @map("shipping_last_sync")
   shippingMeta       Json?     @map("shipping_meta") // Full payload for debugging
+  lastWebhookAt      DateTime? @map("last_webhook_at")
+  lastWebhookPayload Json?     @map("last_webhook_payload")
 
   shippingWilayaCode  String?  @map("shipping_wilaya_code")
   shippingCommuneCode String?  @map("shipping_commune_code")
