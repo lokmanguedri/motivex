@@ -87,7 +87,7 @@ export function HeroBanner() {
                 {language === "fr" ? "Livraison Multi-transporteurs" : "توصيل متعدد الناقلين"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {language === "fr" ? "Yalidine & Guepex" : "ياليدين وجيباكس"}
+                {language === "fr" ? "Toutes les wilayas" : "جميع الولايات"}
               </p>
             </div>
           </div>

@@ -1,11 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { ALGERIA_WILAYAS } from '@/lib/algeria-data'
+import { NextResponse } from 'next/server'
+import { WILAYAS } from '@/lib/algeria-locations'
 
 export const revalidate = 86400 // Cache for 24h
 
+/**
+ * GET /api/shipping/wilayas
+ * Returns stable local Algeria wilayas dataset (58 wilayas)
+ * No external API calls - 100% reliable
+ */
 export async function GET() {
     try {
-        return NextResponse.json(ALGERIA_WILAYAS)
+        return NextResponse.json(WILAYAS)
     } catch (error) {
         console.error("Wilayas Error:", error)
         return NextResponse.json(

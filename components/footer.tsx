@@ -142,7 +142,7 @@ export function Footer() {
             <div className="flex items-center gap-4">
               <span>{language === "fr" ? "Paiement sécurisé" : "دفع آمن"}</span>
               <span>•</span>
-              <span>Yalidine Partner</span>
+              <span>Express Delivery</span>
             </div>
           </div>
         </div>

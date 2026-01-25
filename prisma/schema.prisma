@@ -7,8 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL") // Pooler connection (port 6543) for runtime
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // Pooler connection (port 6543) for runtime
+  directUrl = env("DIRECT_URL")   // Direct connection (port 5432) for migrations
 }
 
 // ============================================
@@ -41,6 +42,11 @@ enum PaymentStatus {
 enum ShippingMethod {
   YALIDINE
   GUEPEX
+}
+
+enum ShippingMode {
+  HOME_DELIVERY
+  DESK_PICKUP
 }
 
 // ============================================
@@ -149,6 +155,7 @@ model Order {
   shippingCommune  String         @map("shipping_commune")
   shippingNotes    String?        @map("shipping_notes") @db.Text
   shippingMethod   ShippingMethod @default(YALIDINE) @map("shipping_method")
+  shippingMode     ShippingMode?  @default(HOME_DELIVERY) @map("shipping_mode")
 
   // Shipping provider tracking
   shippingProvider   String?   @default("YALIDINE") @map("shipping_provider")

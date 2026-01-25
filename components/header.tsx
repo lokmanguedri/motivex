@@ -40,8 +40,8 @@ export function Header() {
         <div className="container mx-auto px-4 py-2">
           <p className="text-xs sm:text-sm text-center font-medium">
             {language === "fr"
-              ? "Livraison rapide dans toutes les wilayas via Yalidine & Guepex"
-              : "توصيل سريع في جميع الولايات عبر ياليدين و جيبكس"}
+              ? "Livraison rapide dans toutes les wilayas"
+              : "توصيل سريع في جميع الولايات"}
           </p>
         </div>
       </div>

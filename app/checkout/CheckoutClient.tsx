@@ -28,8 +28,8 @@ interface Commune {
     id: number
     name: string
     wilaya_id: number
-    has_stop_desk: number
-    is_deliverable: number
+    has_stop_desk?: number | boolean
+    is_deliverable?: number | boolean
 }
 
 export default function CheckoutClient() {
@@ -40,11 +40,9 @@ export default function CheckoutClient() {
 
     // Shipping Data State
     const [wilayas, setWilayas] = useState<Wilaya[]>([])
-    const [communes, setCommunes] = useState<Commune[]>([])
     const [filteredCommunes, setFilteredCommunes] = useState<Commune[]>([])
     const [isLoadingLocation, setIsLoadingLocation] = useState(true)
-    const [shippingFee, setShippingFee] = useState(800) // Default fallback
-    const [isCalculatingFee, setIsCalculatingFee] = useState(false)
+    const shippingFee = 800 // Static shipping fee
 
     const [formData, setFormData] = useState({
         name: "",
@@ -54,7 +52,6 @@ export default function CheckoutClient() {
         wilayaName: "", // For UI/API
         commune: "", // Stores ID as string
         communeName: "", // For UI/API
-        shippingMethod: "HOME_DELIVERY",
         paymentMethod: "COD",
         baridiMobReference: "",
     })
@@ -62,7 +59,6 @@ export default function CheckoutClient() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [orderPlaced, setOrderPlaced] = useState(false)
     const [paymentCode, setPaymentCode] = useState("")
-    const [trackingNumber, setTrackingNumber] = useState("")
 
     // Debug helper
     const isDev = process.env.NODE_ENV === 'development'
@@ -85,26 +81,6 @@ export default function CheckoutClient() {
         loadWilayas()
     }, [])
 
-    const calculateFee = async (wilayaId: number, communeId: number | null, isStopDesk: boolean) => {
-        setIsCalculatingFee(true)
-        try {
-            const params = new URLSearchParams()
-            params.append('wilaya_id', wilayaId.toString())
-            params.append('is_stop_desk', isStopDesk.toString())
-            if (communeId) params.append('commune_id', communeId.toString())
-
-            const res = await fetch(`/api/shipping/fee?${params.toString()}`)
-            if (res.ok) {
-                const data = await res.json()
-                setShippingFee(data.fee)
-            }
-        } catch (err) {
-            console.error("Fee calc error", err)
-        } finally {
-            setIsCalculatingFee(false)
-        }
-    }
-
     // Filter communes when Wilaya changes
     const handleWilayaChange = async (wilayaIdStr: string) => {
         const wilayaId = parseInt(wilayaIdStr)
@@ -120,43 +96,22 @@ export default function CheckoutClient() {
         }))
 
         // Fetch communes for this wilaya
-        await filterCommunesForWilaya(wilayaId, formData.shippingMethod)
-
-        // Reset fee
-        calculateFee(wilayaId, null, formData.shippingMethod === 'DESK_PICKUP')
+        await filterCommunesForWilaya(wilayaId)
     }
 
-// Helper to fetch and filter communes by wilaya and mode
-    const filterCommunesForWilaya = async (wilayaId: number, mode: string) => {
+    // Helper to fetch communes by wilaya
+    const filterCommunesForWilaya = async (wilayaId: number) => {
         try {
-            console.log(`[CHECKOUT] Fetching communes for wilaya ${wilayaId}, mode: ${mode}`)
-            
-            // Fetch communes for this specific wilaya using query parameter
             const res = await fetch(`/api/shipping/communes?wilaya_id=${wilayaId}`)
             if (!res.ok) {
-                console.error("[CHECKOUT] Failed to fetch communes:", await res.text())
                 setFilteredCommunes([])
                 return
             }
 
-            const allCommunes = await res.json()
-            console.log(`[CHECKOUT] Received ${allCommunes.length} communes for wilaya ${wilayaId} from API`)
-            
-            // Filter based on delivery mode
-            const filtered = allCommunes.filter((c: Commune) => {
-                // STOPDESK mode: only communes with stopdesk offices
-                if (mode === 'DESK_PICKUP') {
-                    return c.has_stop_desk === 1
-                }
-                
-                // HOME delivery: only deliverable communes
-                return c.is_deliverable === 1
-            })
-            
-            setFilteredCommunes(filtered)
-            console.log(`[CHECKOUT] Filtered Communes for Wilaya ${wilayaId} (${mode}): ${filtered.length} found`)
+            const communes = await res.json()
+            setFilteredCommunes(communes)
         } catch (err) {
-            console.error("[CHECKOUT] Error filtering communes:", err)
+            console.error("Error fetching communes:", err)
             setFilteredCommunes([])
         }
     }
@@ -171,29 +126,9 @@ export default function CheckoutClient() {
             commune: communeIdStr,
             communeName: selectedCommune?.name || ""
         }))
-
-        // Calculate precise fee
-        if (formData.wilaya) {
-            calculateFee(parseInt(formData.wilaya), communeId, formData.shippingMethod === 'DESK_PICKUP')
-        }
     }
 
-    const handleMethodChange = async (method: string) => {
-        setFormData(prev => ({ ...prev, shippingMethod: method }))
 
-        // Re-filter communes when mode changes
-        if (formData.wilaya) {
-            const wilayaId = parseInt(formData.wilaya)
-            await filterCommunesForWilaya(wilayaId, method)
-
-            // Recalculate fee
-            const communeId = formData.commune ? parseInt(formData.commune) : null
-            calculateFee(wilayaId, communeId, method === 'DESK_PICKUP')
-
-            // Reset commune selection as available communes changed
-            setFormData(prev => ({ ...prev, commune: "", communeName: "" }))
-        }
-    }
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -242,12 +177,11 @@ export default function CheckoutClient() {
                     shippingFullName: formData.name,
                     shippingPhone: formData.phone,
                     shippingWilaya: formData.wilayaName,
-                    shippingWilayaCode: formData.wilaya, // Send Code
-                    shippingCommune: formData.communeName || formData.commune, // Use Name if avail, else fallback
-                    shippingCommuneCode: formData.commune, // Send Code
+                    shippingWilayaCode: formData.wilaya,
+                    shippingCommune: formData.communeName || formData.commune,
+                    shippingCommuneCode: formData.commune,
                     shippingAddress1: formData.address,
-                    shippingNotes: `Mode: ${formData.shippingMethod}`,
-                    shippingMethod: "GUEPEX"
+                    shippingNotes: language === "fr" ? "Livraison standard" : "توصيل قياسي"
                 })
             })
 
@@ -258,9 +192,6 @@ export default function CheckoutClient() {
             }
 
             setPaymentCode(data.order.paymentCode)
-            if (data.order.trackingNumber) {
-                setTrackingNumber(data.order.trackingNumber)
-            }
             setOrderPlaced(true)
             clearCart()
 
@@ -295,27 +226,11 @@ export default function CheckoutClient() {
                                 {language === "fr" ? "Merci pour votre commande!" : "شكراً لطلبك!"}
                             </p>
                             <div className="bg-secondary/50 rounded-lg p-4 mb-6">
-                                {trackingNumber ? (
-                                    <>
-                                        <p className="text-sm text-muted-foreground mb-1">
-                                            {language === "fr" ? "Numéro de Suivi (Yalidine)" : "رقم التتبع (Yalidine)"}
-                                        </p>
-                                        <p className="font-mono font-bold text-2xl text-primary mb-2 select-all">
-                                            {trackingNumber}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {language === "fr" ? `Ref Commande: ${paymentCode}` : `مرجع الطلب: ${paymentCode}`}
-                                        </p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <p className="text-sm text-muted-foreground mb-1">{language === "fr" ? "Code Paiement" : "كود الدفع"}</p>
-                                        <p className="font-mono font-bold text-lg text-foreground">{paymentCode}</p>
-                                        <p className="text-xs text-amber-600 mt-2">
-                                            {language === "fr" ? "Expédition en cours de création..." : "جاري إنشاء الشحنة..."}
-                                        </p>
-                                    </>
-                                )}
+                                <p className="text-sm text-muted-foreground mb-1">{language === "fr" ? "Code Paiement" : "كود الدفع"}</p>
+                                <p className="font-mono font-bold text-lg text-foreground">{paymentCode}</p>
+                                <p className="text-xs text-amber-600 mt-2">
+                                    {language === "fr" ? "Notez ce code pour le suivi de votre commande" : "سجل هذا الرمز لتتبع طلبك"}
+                                </p>
                             </div>
                             {formData.paymentMethod === "BARIDIMOB" && (
                                 <div className="bg-primary/10 rounded-lg p-4 mb-6">
@@ -349,7 +264,7 @@ export default function CheckoutClient() {
                             <p><strong>DEBUG SHIPPING:</strong></p>
                             <p>Wilaya: {formData.wilaya} ({formData.wilayaName})</p>
                             <p>Commune: {formData.commune} ({formData.communeName})</p>
-                            <p>Provider: YALIDINE/GUEPEX</p>
+
                         </div>
                     )}
 
@@ -397,11 +312,17 @@ export default function CheckoutClient() {
                                                         <SelectValue placeholder={language === "fr" ? "Sélectionner Commune" : "اختر البلدية"} />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {filteredCommunes.map((c) => (
-                                                            <SelectItem key={c.id} value={c.id.toString()}>
-                                                                {c.name}
-                                                            </SelectItem>
-                                                        ))}
+                                                        {filteredCommunes.length === 0 && formData.wilaya ? (
+                                                            <div className="p-2 text-sm text-muted-foreground">
+                                                                {language === "fr" ? "Aucune commune disponible" : "لا توجد بلديات متاحة"}
+                                                            </div>
+                                                        ) : (
+                                                            filteredCommunes.map((c) => (
+                                                                <SelectItem key={c.id} value={c.id.toString()}>
+                                                                    {c.name}
+                                                                </SelectItem>
+                                                            ))
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -409,10 +330,11 @@ export default function CheckoutClient() {
                                     </CardContent>
                                 </Card>
 
+                                {/* Shipping Method Selection */}
                                 <Card className="border-border">
                                     <CardHeader className="pb-4"><CardTitle>{language === "fr" ? "Méthode de livraison" : "طريقة التوصيل"}</CardTitle></CardHeader>
                                     <CardContent className="space-y-3">
-                                        <RadioGroup value={formData.shippingMethod} onValueChange={handleMethodChange} className="space-y-3">
+                                        <RadioGroup value={formData.shippingMethod} onValueChange={(value) => setFormData(prev => ({ ...prev, shippingMethod: value }))} className="space-y-3">
                                             <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer ${formData.shippingMethod === "HOME_DELIVERY" ? "border-primary bg-primary/5" : "border-border"}`}>
                                                 <RadioGroupItem value="HOME_DELIVERY" id="HOME_DELIVERY" />
                                                 <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0"><Truck className="w-5 h-5 text-primary" /></div>
@@ -472,7 +394,7 @@ export default function CheckoutClient() {
                                             <div className="flex justify-between">
                                                 <span>{t("shipping")}</span>
                                                 <span className="font-medium">
-                                                    {isCalculatingFee ? <Loader2 className="w-4 h-4 animate-spin" /> : `${shippingFee.toLocaleString()} DZD`}
+                                                    {shippingFee.toLocaleString()} DZD
                                                 </span>
                                             </div>
                                             <div className="flex justify-between text-xl font-bold pt-2 border-t mt-2">
@@ -480,7 +402,7 @@ export default function CheckoutClient() {
                                                 <span>{finalTotal.toLocaleString()} DZD</span>
                                             </div>
                                         </div>
-                                        <Button className="w-full mt-6" onClick={handleSubmit} disabled={isSubmitting || isCalculatingFee}>
+                                        <Button className="w-full mt-6" onClick={handleSubmit} disabled={isSubmitting}>
                                             {isSubmitting ? <Loader2 className="animate-spin" /> : t("confirmOrder")}
                                         </Button>
 

@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const {
             items,
-            shippingMethod,
             paymentMethod,
             baridiMobReference,
             shippingFullName,
@@ -69,7 +68,8 @@ export async function POST(request: NextRequest) {
             shippingNotes,
             // New fields
             shippingWilayaCode,
-            shippingCommuneCode
+            shippingCommuneCode,
+            shippingMode // "HOME_DELIVERY" or "DESK_PICKUP"
         } = body
 
         // Validation - Required Fields
@@ -83,14 +83,6 @@ export async function POST(request: NextRequest) {
         if (!paymentMethod || !["COD", "BARIDIMOB"].includes(paymentMethod)) {
             return NextResponse.json(
                 { error: "Invalid payment method" },
-                { status: 400 }
-            )
-        }
-
-        // Note: shippingMethod might come as null/undefined, defaulting to Yalidine is handled later, but strict check is good if provided.
-        if (shippingMethod && !["YALIDINE", "GUEPEX"].includes(shippingMethod)) {
-            return NextResponse.json(
-                { error: "Invalid shipping method" },
                 { status: 400 }
             )
         }
@@ -221,35 +213,17 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Calculate shipping fee dynamically
-        let shippingPrice = 800 // Default fallback
-        const PROVIDER = process.env.SHIPPING_PROVIDER || 'YALIDINE'
-
-        if (PROVIDER === 'GUEPEX' && shippingWilayaCode) {
-            // Import dynamically to avoid side effects if not used? No, safe to import at top usually.
-            const { calculateGuepexFee } = await import('@/lib/guepex-api')
-            const calculatedFee = await calculateGuepexFee(parseInt(shippingWilayaCode)) // Basic check
-            // Or exact check if we have commune code
-            // const { calculateGuepexFeeExact } = await import('@/lib/guepex-api')
-            // const calculatedFee = await calculateGuepexFeeExact(16, parseInt(shippingWilayaCode), parseInt(shippingCommuneCode), false)
-
-            if (calculatedFee !== null) {
-                shippingPrice = calculatedFee
-            }
-        }
+        // Calculate shipping fee - simple static rate
+        const shippingPrice = 800 // Static 800 DZD shipping fee
 
         const total = subtotal + shippingPrice
 
         // Generate unique payment code
         const paymentCode = await generatePaymentCode()
 
-        // Phone is already validated above.
-        // Use phoneValidationResult from upper scope.
-
         // Create order with payment in transaction + ATOMIC STOCK DEDUCTION
         const order = await prisma.$transaction(async (tx: any) => {
             // CRITICAL: Decrement stock for each product atomically
-            // This prevents race conditions when multiple orders happen simultaneously
             for (const itemData of orderItemsData) {
                 await tx.product.update({
                     where: { id: itemData.productId },
@@ -261,7 +235,7 @@ export async function POST(request: NextRequest) {
                 })
             }
 
-            // Now create the order (stock already decremented)
+            // Create the order
             const newOrder = await tx.order.create({
                 data: {
                     paymentCode,
@@ -270,17 +244,15 @@ export async function POST(request: NextRequest) {
                     shippingPrice,
                     total,
                     shippingFullName,
-                    shippingPhone: phoneValidationResult.normalized!, // Use normalized from top validation
+                    shippingPhone: phoneValidationResult.normalized!,
                     shippingWilaya,
                     shippingCommune,
                     shippingAddress1,
                     shippingNotes: shippingNotes || null,
-                    shippingMethod: shippingMethod || "YALIDINE",
                     userId: session.user.id,
-                    // New Fields
+                    // Store wilaya/commune codes if provided
                     shippingWilayaCode,
                     shippingCommuneCode,
-                    shippingProvider: PROVIDER,
                     items: {
                         create: orderItemsData
                     },
@@ -302,77 +274,13 @@ export async function POST(request: NextRequest) {
             return newOrder
         })
 
-
-
-        // 4. Create Shipment in Guepex (Async, don't block response too long but we want to return tracking if possible)
-        // Since user wants "trackingNumber to frontend immediately", we must wait for it.
-        // If it fails, we still return success structure but with pending shipping status.
-
-        let trackingNumber = null
-        let shippingStatus = "SHIPPING_PENDING"
-
-        if (PROVIDER === 'GUEPEX') {
-            try {
-                const { createGuepexShipment } = await import('@/lib/guepex-api')
-
-                // Prepare shipment data
-                const shipmentData = {
-                    fullName: shippingFullName,
-                    phone: phoneValidationResult.normalized!,
-                    address: shippingAddress1,
-                    wilaya: shippingWilaya, // Name
-                    commune: shippingCommune, // Name
-                    orderNumber: paymentCode,
-                    items: orderItemsData.map((i: any) => ({
-                        name: i.snapshotNameFr,
-                        quantity: i.quantity,
-                        price: Number(i.snapshotPrice)
-                    })),
-                    totalAmount: total,
-                    notes: shippingNotes || "",
-                    shippingMethod: shippingMethod === "DESK_PICKUP" ? "DESK_PICKUP" : "HOME_DELIVERY"
-                }
-
-                const shipment = await createGuepexShipment(shipmentData)
-
-                trackingNumber = shipment.trackingId
-                shippingStatus = "SHIPPING_CREATED" // Internal status mapped to Guepex 'PENDING'/'CREATED'
-
-                // Update Order with Tracking Info
-                await prisma.order.update({
-                    where: { id: order.id },
-                    data: {
-                        trackingNumber: shipment.trackingId,
-                        shippingStatus: shippingStatus,
-                        shippingRawStatus: shipment.status, // "PENDING" usually
-                        shippingLabel: shipment.label,
-                        // Store full response in meta if needed
-                        shippingMeta: shipment.rawResponse ? shipment.rawResponse : undefined
-                    }
-                })
-
-            } catch (shipError: any) {
-                console.error("Failed to create Guepex shipment:", shipError)
-                // We do NOT fail the order. We just log it.
-                // Status remains PENDING (default) or set to SHIPPING_PENDING explicitly
-                await prisma.order.update({
-                    where: { id: order.id },
-                    data: {
-                        shippingStatus: "SHIPPING_PENDING",
-                        shippingMeta: { error: shipError.message }
-                    }
-                })
-            }
-        }
-
         return NextResponse.json({
             order: {
                 id: order.id,
                 paymentCode: order.paymentCode,
                 status: order.status,
                 total: order.total,
-                createdAt: order.createdAt,
-                trackingNumber: trackingNumber // Return to frontend
+                createdAt: order.createdAt
             },
             payment: {
                 method: order.payment?.method,
