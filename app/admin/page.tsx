@@ -1071,6 +1071,7 @@ export default function AdminDashboard() {
                                               <Select
                                                 value={order.status}
                                                 onValueChange={(value) => handleUpdateOrder(order.id, { status: value })}
+                                                disabled={!!order.trackingNumber} // Disable manual update if Guepex tracking exists
                                               >
                                                 <SelectTrigger className="h-10 bg-card border-border flex-1">
                                                   <SelectValue />
@@ -1083,6 +1084,11 @@ export default function AdminDashboard() {
                                                   <SelectItem value="RETURNED">RETURNED</SelectItem>
                                                 </SelectContent>
                                               </Select>
+                                              {order.trackingNumber && (
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                  {language === "fr" ? "Géré par Guepex" : "تدار بواسطة Guepex"}
+                                                </p>
+                                              )}
 
                                               {!order.shippingTrackingId && (
                                                 <Button
