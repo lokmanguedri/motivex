@@ -1,13 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTrackingInfo, mapGuepexStatus } from '@/lib/guepex-api'
 import { getToken } from 'next-auth/jwt'
 
 export async function POST(
-    req: Request,
-    { params }: { params: { id: string } }
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
+
         // Auth check
         const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
         if (!token || token.role !== 'ADMIN') {
@@ -15,7 +17,7 @@ export async function POST(
         }
 
         const order = await prisma.order.findUnique({
-            where: { id: params.id }
+            where: { id }
         })
 
         if (!order || !order.trackingNumber) {
@@ -23,7 +25,7 @@ export async function POST(
         }
 
         // Fetch from Guepex
-        const trackingInfo = await getTrackingInfo(order.trackingNumber) // Need to implement this in lib
+        const trackingInfo = await getTrackingInfo(order.trackingNumber)
 
         if (!trackingInfo) {
             return NextResponse.json({ error: "Tracking info not found in Guepex" }, { status: 404 })

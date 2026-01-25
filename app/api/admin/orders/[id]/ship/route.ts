@@ -1,13 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createGuepexShipment } from '@/lib/guepex-api'
 import { getToken } from 'next-auth/jwt'
 
 export async function POST(
-    req: Request,
-    { params }: { params: { id: string } }
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
+
         // Auth check
         const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
         if (!token || token.role !== 'ADMIN') {
@@ -15,7 +17,7 @@ export async function POST(
         }
 
         const order = await prisma.order.findUnique({
-            where: { id: params.id },
+            where: { id },
             include: { items: { include: { product: true } } }
         })
 
@@ -29,19 +31,18 @@ export async function POST(
 
         // Determine Shipping Mode (HOME / DESK)
         let isDeskPickup = false
-        // 'shippingNotes' field stores "Mode: DESK_PICKUP" string from Checkout
         if (order.shippingNotes && order.shippingNotes.includes('DESK_PICKUP')) {
             isDeskPickup = true
         }
 
-        // Prepare Shipment Data
+        // Prepare Shipment Data - Match GuepexShipmentData interface
         const shipmentData = {
             fullName: order.shippingFullName,
             phone: order.shippingPhone,
             address: order.shippingAddress1,
             wilaya: order.shippingWilaya,
             commune: order.shippingCommune,
-            orderNumber: order.paymentCode, // Match frontend logic
+            orderNumber: order.paymentCode,
             items: order.items.map(item => ({
                 name: item.snapshotNameFr,
                 quantity: item.quantity,
@@ -56,15 +57,15 @@ export async function POST(
 
         // Update Order
         await prisma.order.update({
-            where: { id: params.id },
+            where: { id },
             data: {
-                trackingNumber: result.trackingId, // New field
-                shippingTrackingId: result.trackingId, // Legacy support
+                trackingNumber: result.trackingId,
+                shippingTrackingId: result.trackingId,
                 shippingLabel: result.label,
-                shippingStatus: "SHIPPING_CREATED", // Mapped internal status
+                shippingStatus: "SHIPPING_CREATED",
                 shippingRawStatus: result.status,
-                status: 'SHIPPED', // Or keep PENDING until verified? User likely wants SHIPPED if label created.
-                shippingProvider: 'YALIDINE', // Requirements say UI should show YALIDINE
+                status: 'SHIPPED',
+                shippingProvider: 'YALIDINE',
                 shippingLastSync: new Date(),
                 shippingMeta: result.rawResponse ? result.rawResponse : undefined
             }
