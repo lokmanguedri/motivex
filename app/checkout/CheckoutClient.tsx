@@ -48,10 +48,11 @@ export default function CheckoutClient() {
         name: "",
         phone: "",
         address: "",
-        wilaya: "", // Stores ID as string
-        wilayaName: "", // For UI/API
-        commune: "", // Stores ID as string
-        communeName: "", // For UI/API
+        wilaya: "",
+        wilayaName: "",
+        commune: "",
+        communeName: "",
+        shippingMethod: "HOME_DELIVERY",
         paymentMethod: "COD",
         baridiMobReference: "",
     })
