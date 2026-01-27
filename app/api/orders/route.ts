@@ -65,11 +65,7 @@ export async function POST(request: NextRequest) {
             shippingWilaya,
             shippingCommune,
             shippingAddress1,
-            shippingNotes,
-            // New fields
-            shippingWilayaCode,
-            shippingCommuneCode,
-            shippingMode // "HOME_DELIVERY" or "DESK_PICKUP"
+            shippingNotes
         } = body
 
         // Validation - Required Fields
@@ -250,9 +246,6 @@ export async function POST(request: NextRequest) {
                     shippingAddress1,
                     shippingNotes: shippingNotes || null,
                     userId: session.user.id,
-                    // Store wilaya/commune codes if provided
-                    shippingWilayaCode,
-                    shippingCommuneCode,
                     items: {
                         create: orderItemsData
                     },

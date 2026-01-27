@@ -18,19 +18,17 @@ import { toast } from "sonner"
 import { Banknote, Smartphone, CheckCircle, Truck, Lock, Loader2 } from "lucide-react"
 import { MotivexLogo } from "@/components/motivex-logo"
 
-interface Wilaya {
-    id: number
-    name: string
-    zone: number
-}
-
-interface Commune {
-    id: number
-    name: string
-    wilaya_id: number
-    has_stop_desk?: number | boolean
-    is_deliverable?: number | boolean
-}
+// Algerian Wilayas list
+const ALGERIAN_WILAYAS = [
+    "Adrar", "Chlef", "Laghouat", "Oum El Bouaghi", "Batna", "Béjaïa", "Biskra", "Béchar",
+    "Blida", "Bouira", "Tamanrasset", "Tébessa", "Tlemcen", "Tiaret", "Tizi Ouzou", "Alger",
+    "Djelfa", "Jijel", "Sétif", "Saïda", "Skikda", "Sidi Bel Abbès", "Annaba", "Guelma",
+    "Constantine", "Médéa", "Mostaganem", "M'Sila", "Mascara", "Ouargla", "Oran", "El Bayadh",
+    "Illizi", "Bordj Bou Arreridj", "Boumerdès", "El Tarf", "Tindouf", "Tissemsilt", "El Oued",
+    "Khenchela", "Souk Ahras", "Tipaza", "Mila", "Aïn Defla", "Naâma", "Aïn Témouchent",
+    "Ghardaïa", "Relizane", "Timimoun", "Bordj Badji Mokhtar", "Ouled Djellal",
+    "Béni Abbès", "In Salah", "In Guezzam", "Touggourt", "Djanet", "El M'Ghair", "El Meniaa"
+]
 
 export default function CheckoutClient() {
     const router = useRouter()
@@ -38,10 +36,6 @@ export default function CheckoutClient() {
     const { items, subtotal, total: cartTotal, clearCart } = useCart()
     const { user } = useAuth()
 
-    // Shipping Data State
-    const [wilayas, setWilayas] = useState<Wilaya[]>([])
-    const [filteredCommunes, setFilteredCommunes] = useState<Commune[]>([])
-    const [isLoadingLocation, setIsLoadingLocation] = useState(true)
     const shippingFee = 800 // Static shipping fee
 
     const [formData, setFormData] = useState({
@@ -49,9 +43,7 @@ export default function CheckoutClient() {
         phone: "",
         address: "",
         wilaya: "",
-        wilayaName: "",
         commune: "",
-        communeName: "",
         shippingMethod: "HOME_DELIVERY",
         paymentMethod: "COD",
         baridiMobReference: "",
@@ -63,73 +55,6 @@ export default function CheckoutClient() {
 
     // Debug helper
     const isDev = process.env.NODE_ENV === 'development'
-
-    // Load Wilayas on mount (Communes loaded dynamically per wilaya)
-    useEffect(() => {
-        const loadWilayas = async () => {
-            try {
-                const wRes = await fetch('/api/shipping/wilayas')
-                if (wRes.ok) {
-                    setWilayas(await wRes.json())
-                }
-            } catch (err) {
-                console.error("Failed to load wilayas", err)
-                toast.error("Error loading location data / خطأ في تحميل البيانات")
-            } finally {
-                setIsLoadingLocation(false)
-            }
-        }
-        loadWilayas()
-    }, [])
-
-    // Filter communes when Wilaya changes
-    const handleWilayaChange = async (wilayaIdStr: string) => {
-        const wilayaId = parseInt(wilayaIdStr)
-        const selectedWilaya = wilayas.find(w => w.id === wilayaId)
-
-        // Reset commune when wilaya changes
-        setFormData(prev => ({
-            ...prev,
-            wilaya: wilayaIdStr,
-            wilayaName: selectedWilaya?.name || "",
-            commune: "",
-            communeName: ""
-        }))
-
-        // Fetch communes for this wilaya
-        await filterCommunesForWilaya(wilayaId)
-    }
-
-    // Helper to fetch communes by wilaya
-    const filterCommunesForWilaya = async (wilayaId: number) => {
-        try {
-            const res = await fetch(`/api/shipping/communes?wilaya_id=${wilayaId}`)
-            if (!res.ok) {
-                setFilteredCommunes([])
-                return
-            }
-
-            const communes = await res.json()
-            setFilteredCommunes(communes)
-        } catch (err) {
-            console.error("Error fetching communes:", err)
-            setFilteredCommunes([])
-        }
-    }
-
-
-    const handleCommuneChange = (communeIdStr: string) => {
-        const communeId = parseInt(communeIdStr)
-        const selectedCommune = filteredCommunes.find(c => c.id === communeId)
-
-        setFormData(prev => ({
-            ...prev,
-            commune: communeIdStr,
-            communeName: selectedCommune?.name || ""
-        }))
-    }
-
-
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -147,7 +72,22 @@ export default function CheckoutClient() {
             return
         }
 
+        console.log("[CHECKOUT] Form submission - formData:", formData)
+        console.log("[CHECKOUT] Validation check:", {
+            name: formData.name,
+            phone: formData.phone,
+            address: formData.address,
+            wilaya: formData.wilaya,
+            commune: formData.commune
+        })
+
         if (!formData.name || !formData.phone || !formData.address || !formData.wilaya) {
+            console.error("[CHECKOUT] Validation failed! Missing:", {
+                name: !formData.name,
+                phone: !formData.phone,
+                address: !formData.address,
+                wilaya: !formData.wilaya
+            })
             toast.error(language === "fr" ? "Veuillez remplir tous les champs" : "يرجى ملء جميع الحقول")
             return
         }
@@ -177,12 +117,10 @@ export default function CheckoutClient() {
                     baridiMobReference: formData.paymentMethod === "BARIDIMOB" ? formData.baridiMobReference : undefined,
                     shippingFullName: formData.name,
                     shippingPhone: formData.phone,
-                    shippingWilaya: formData.wilayaName,
-                    shippingWilayaCode: formData.wilaya,
-                    shippingCommune: formData.communeName || formData.commune,
-                    shippingCommuneCode: formData.commune,
+                    shippingWilaya: formData.wilaya,
+                    shippingCommune: formData.commune,
                     shippingAddress1: formData.address,
-                    shippingNotes: language === "fr" ? "Livraison standard" : "توصيل قياسي"
+                    shippingNotes: null
                 })
             })
 
@@ -263,9 +201,8 @@ export default function CheckoutClient() {
                     {isDev && (
                         <div className="mb-4 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded border border-green-800 overflow-auto">
                             <p><strong>DEBUG SHIPPING:</strong></p>
-                            <p>Wilaya: {formData.wilaya} ({formData.wilayaName})</p>
-                            <p>Commune: {formData.commune} ({formData.communeName})</p>
-
+                            <p>Wilaya: {formData.wilaya}</p>
+                            <p>Commune: {formData.commune}</p>
                         </div>
                     )}
 
@@ -292,40 +229,29 @@ export default function CheckoutClient() {
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label>{t("wilaya")}</Label>
-                                                <Select value={formData.wilaya} onValueChange={handleWilayaChange} disabled={isLoadingLocation}>
+                                                <Label htmlFor="wilaya">{t("wilaya")}</Label>
+                                                <Select value={formData.wilaya} onValueChange={(value) => handleChange("wilaya", value)}>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder={isLoadingLocation ? "Loading..." : t("selectWilaya")} />
+                                                        <SelectValue placeholder={t("selectWilaya")} />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {wilayas.map((w) => (
-                                                            <SelectItem key={w.id} value={w.id.toString()}>
-                                                                {String(w.id).padStart(2, "0")} - {w.name}
+                                                        {ALGERIAN_WILAYAS.map((wilaya) => (
+                                                            <SelectItem key={wilaya} value={wilaya}>
+                                                                {wilaya}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label>{language === "fr" ? "Commune" : "البلدية"}</Label>
-                                                <Select value={formData.commune} onValueChange={handleCommuneChange} disabled={!formData.wilaya}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder={language === "fr" ? "Sélectionner Commune" : "اختر البلدية"} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {filteredCommunes.length === 0 && formData.wilaya ? (
-                                                            <div className="p-2 text-sm text-muted-foreground">
-                                                                {language === "fr" ? "Aucune commune disponible" : "لا توجد بلديات متاحة"}
-                                                            </div>
-                                                        ) : (
-                                                            filteredCommunes.map((c) => (
-                                                                <SelectItem key={c.id} value={c.id.toString()}>
-                                                                    {c.name}
-                                                                </SelectItem>
-                                                            ))
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
+                                                <Label htmlFor="commune">{language === "fr" ? "Commune" : "البلدية"}</Label>
+                                                <Input
+                                                    id="commune"
+                                                    value={formData.commune}
+                                                    onChange={(e) => handleChange("commune", e.target.value)}
+                                                    placeholder={language === "fr" ? "Ex: Bab Ezzouar" : "مثال: باب الزوار"}
+                                                    required
+                                                />
                                             </div>
                                         </div>
                                     </CardContent>
