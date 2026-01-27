@@ -19,18 +19,10 @@ export async function GET(
             select: {
                 id: true,
                 paymentCode: true,
-                trackingNumber: true,
                 shippingStatus: true,
-                shippingRawStatus: true,
-                shippingLastSync: true,
                 shippingWilaya: true,
-                shippingWilayaCode: true,
                 shippingCommune: true,
-                shippingCommuneCode: true,
                 shippingProvider: true,
-                shippingMeta: true,
-                lastWebhookAt: true,
-                lastWebhookPayload: true
             }
         })
 

@@ -893,13 +893,8 @@ export default function AdminDashboard() {
                                 <TableCell>
                                   <div className="flex flex-col gap-1">
                                     <span className="text-xs font-bold text-foreground">YALIDINE</span>
-                                    {order.trackingNumber ? (
-                                      <>
-                                        <span className="text-[10px] font-mono select-all bg-secondary px-1 rounded">{order.trackingNumber}</span>
-                                        <div className="flex gap-2 text-[10px]">
-                                          {order.shippingStatus && <span className="font-medium truncate max-w-[80px]">{order.shippingStatus}</span>}
-                                        </div>
-                                      </>
+                                    {order.shippingStatus ? (
+                                      <span className="font-medium truncate max-w-[80px] text-[10px]">{order.shippingStatus}</span>
                                     ) : (
                                       <span className="text-[10px] text-muted-foreground">-</span>
                                     )}
@@ -1057,7 +1052,8 @@ export default function AdminDashboard() {
                                             </Select>
                                           </div>
                                         </div>
-                                  </DialogContent>
+                                      )}
+                                    </DialogContent>
                                   </Dialog>
                                 </TableCell>
                               </TableRow>
